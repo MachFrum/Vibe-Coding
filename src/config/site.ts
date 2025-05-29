@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Package, BookOpen, ArrowRightLeft, Users, Store, BarChart, Lightbulb, Briefcase } from 'lucide-react'; // Removed Settings icon
+import { LayoutDashboard, Package, BookOpen, ArrowRightLeft, Users, Store, BarChart, Lightbulb, Briefcase, Settings } from 'lucide-react';
 
 export type NavItem = {
   title: string;
@@ -68,6 +68,10 @@ export const siteConfig: SiteConfig = {
       href: "/advice",
       icon: Lightbulb,
     },
-    // Settings link removed from main sidebar, accessed via profile dropdown
+    {
+      title: "Settings",
+      href: "/settings",
+      icon: Settings,
+    },
   ],
 };
