@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
-import Image from "next/image"; // Import next/image
+import Image from "next/image";
 
 const transactionSchema = z.object({
   date: z.date({ required_error: "Transaction date is required." }),
@@ -303,3 +304,7 @@ export default function TransactionsPage() {
                 )}
             </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+}

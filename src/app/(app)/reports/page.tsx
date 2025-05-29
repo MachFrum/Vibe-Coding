@@ -14,10 +14,10 @@ const salesData = [
   { month: 'Jun', sales: 2390, profit: 3800 },
 ];
 
-const salesChartConfig = {
+const salesChartConfig: ChartConfig = {
   sales: { label: "Sales", color: "hsl(var(--chart-1))" },
   profit: { label: "Profit", color: "hsl(var(--chart-2))" },
-} satisfies ChartConfig;
+};
 
 const expenseData = [
   { name: 'Marketing', value: 400 },
@@ -28,12 +28,12 @@ const expenseData = [
 ];
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
-const expenseChartConfig = Object.fromEntries(
+const expenseChartConfig: ChartConfig = Object.fromEntries(
   expenseData.map((entry, index) => [
     entry.name.toLowerCase(),
     { label: entry.name, color: COLORS[index % COLORS.length] },
   ])
-) satisfies ChartConfig;
+);
 
 
 const inventoryTurnoverData = [
@@ -45,9 +45,9 @@ const inventoryTurnoverData = [
   { month: 'Jun', turnoverRate: 3.5 },
 ];
 
-const inventoryChartConfig = {
+const inventoryChartConfig: ChartConfig = {
   turnoverRate: { label: "Turnover Rate", color: "hsl(var(--chart-3))" },
-} satisfies ChartConfig;
+};
 
 export default function ReportsPage() {
   return (
@@ -144,4 +144,10 @@ export default function ReportsPage() {
                 <ChartTooltipContent />
                 <Legend />
                 <Line type="monotone" dataKey="turnoverRate" stroke="var(--color-turnoverRate)" strokeWidth={2} activeDot={{ r: 8 }} />
-              
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+    </div>
+  );
+}
