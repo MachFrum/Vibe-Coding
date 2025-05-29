@@ -70,7 +70,9 @@ export default function TransactionsPage() {
           setHasCameraPermission(true);
           videoElement.srcObject = streamObj;
         } catch (error) {
-          // console.error('Error accessing camera:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error accessing camera:', error);
+          }
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',

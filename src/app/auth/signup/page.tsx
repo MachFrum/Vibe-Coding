@@ -61,6 +61,9 @@ export default function SignUpPage() {
       let errorMessage = 'Failed to create account. Please try again.';
        if (error && typeof error === 'object' && 'code' in error) {
         const firebaseError = error as FirebaseError;
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Firebase Sign Up Error:", firebaseError.code, firebaseError.message);
+        }
         if (firebaseError.code === 'auth/email-already-in-use') {
           errorMessage = 'This email address is already in use.';
         } else if (firebaseError.code === 'auth/invalid-api-key' || firebaseError.code === 'auth/project-not-found' || firebaseError.code === 'auth/operation-not-allowed') {

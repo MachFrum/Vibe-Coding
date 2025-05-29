@@ -30,6 +30,9 @@ const firebaseConfig = {
 
 // --- DEBUGGING LOG ---
 // Check your browser console to see if these values are being loaded correctly.
+if (process.env.NODE_ENV === 'development') {
+  console.log('Firebase Config Loaded by App:', firebaseConfig);
+}
 if (!firebaseConfig.apiKey) {
   console.error("Firebase API Key is missing. Check your .env.local file and ensure the Next.js server was restarted.");
 }
@@ -42,12 +45,9 @@ let storage: FirebaseStorage;
 
 if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
-    // Log an error or throw if the API key is essential for initialization
-    // and not found. This helps catch the issue early.
-    // console.error previously here is kept above for early dev feedback
+    // Error is logged above.
     // Depending on how critical Firebase is at this point, you might throw an error
     // or allow the app to continue, knowing Firebase features will fail.
-    // For now, we'll let it proceed and other parts of the app will fail if they try to use Firebase.
   }
   app = initializeApp(firebaseConfig);
 } else {
@@ -102,6 +102,9 @@ const uploadProfileImage = async (userId: string, file: File): Promise<string> =
     try {
       await updateProfile(auth.currentUser, { photoURL: downloadURL });
     } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error updating Firebase Auth user profile photoURL:", error);
+      }
       // Error updating Firebase Auth user profile photoURL
       // This might be handled by a more specific error message in the UI if critical
     }

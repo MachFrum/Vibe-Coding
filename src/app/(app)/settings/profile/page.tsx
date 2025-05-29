@@ -68,8 +68,10 @@ export default function ProfilePage() {
       toast({ title: "Profile Image Uploaded", description: "Your new profile image is set." });
       // Consider calling a function in AuthContext to refresh currentUser if needed for immediate update in UserNav.
     } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Profile image upload error:", error);
+      }
       toast({ title: "Upload Failed", description: "Could not upload profile image.", variant: "destructive" });
-      // console.error("Profile image upload error:", error);
     } finally {
       setIsUploading(false);
     }

@@ -46,7 +46,9 @@ export function AdviceForm() {
       const result = await getBusinessAdvice(input);
       setAdviceResult(result);
     } catch (error) {
-      // console.error("Error getting business advice:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error getting business advice:", error);
+      }
       toast({
         variant: "destructive",
         title: "Error",
