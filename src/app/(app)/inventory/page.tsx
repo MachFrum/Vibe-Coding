@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // Keep if used for item description later
+import { Textarea } from "@/components/ui/textarea"; 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,13 +14,13 @@ import { PlusCircle, ImagePlus, Camera, Loader2 } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { InventoryTable } from "@/components/features/inventory/inventory-table";
 import { inventoryColumns } from "@/components/features/inventory/inventory-columns";
-import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent, useCallback } from "react"; // Added useCallback
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { addInventoryItemToFirestore, getInventoryItemsFromFirestore, storage, auth } from "@/lib/firebase"; // Import Firestore functions
+import { addInventoryItemToFirestore, getInventoryItemsFromFirestore, storage } from "@/lib/firebase"; 
 import { ref as storageRefStandard, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 
@@ -30,7 +30,7 @@ const inventoryItemSchema = z.object({
   unitPrice: z.coerce.number().positive("Unit price must be positive."),
   lowStockThreshold: z.coerce.number().min(0, "Low stock threshold must be non-negative."),
   supplier: z.string().optional(),
-  imageFile: z.any().optional(), // For the actual file object
+  imageFile: z.any().optional(), 
 });
 
 type InventoryFormValues = z.infer<typeof inventoryItemSchema>;
@@ -42,7 +42,7 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const { businessName } = useBusiness();
   const { currentUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Initialize to true
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
@@ -50,7 +50,6 @@ export default function InventoryPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Placeholder for business ID - in a real app, this would come from user's context or selected business
   const DUMMY_BUSINESS_ID = "defaultBusiness123"; 
 
   const form = useForm<InventoryFormValues>({
@@ -65,12 +64,15 @@ export default function InventoryPage() {
     },
   });
 
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
+    // This function is now memoized by useCallback.
+    // currentUser and DUMMY_BUSINESS_ID are stable or included in deps.
     if (!currentUser || !DUMMY_BUSINESS_ID) {
-      setInventory([]); // Clear inventory if no user or business ID
+      setInventory([]);
+      setIsLoading(false); // Ensure loading stops if prerequisites aren't met
       return;
     }
-    setIsLoading(true);
+    // setIsLoading(true) will be handled by the useEffect or calling context
     try {
       const items = await getInventoryItemsFromFirestore(DUMMY_BUSINESS_ID);
       setInventory(items);
@@ -83,15 +85,23 @@ export default function InventoryPage() {
         title: "Error",
         description: "Could not fetch inventory items.",
       });
+      setInventory([]); // Clear inventory on error
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Always stop loading
     }
-  };
+  }, [currentUser, toast]); // DUMMY_BUSINESS_ID is stable, toast is stable from hook
 
   useEffect(() => {
-    fetchInventory();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]); // Refetch if user changes
+    if (currentUser) {
+      setIsLoading(true); // Set loading true right before fetching
+      fetchInventory();
+    } else {
+      // If there's no user (e.g., on initial load before auth state is known, or after logout)
+      setInventory([]);
+      setIsLoading(false);
+    }
+  }, [currentUser, fetchInventory]);
+
 
   useEffect(() => {
     let streamObj: MediaStream | null = null;
@@ -146,7 +156,7 @@ export default function InventoryPage() {
         
         await new Promise<void>((resolve, reject) => {
           uploadTask.on('state_changed', 
-            null, // progress can be handled here if needed
+            null, 
             (error) => {
               if (process.env.NODE_ENV === 'development') {
                 // console.error("Image upload error:", error);
@@ -176,7 +186,7 @@ export default function InventoryPage() {
       unitPrice: values.unitPrice,
       lowStockThreshold: values.lowStockThreshold,
       supplier: values.supplier,
-      imageUrl: imageUrl, // Store the cloud URL
+      imageUrl: imageUrl, 
     };
 
     try {
@@ -191,7 +201,7 @@ export default function InventoryPage() {
           fileInputRef.current.value = "";
       }
       setIsAddItemDialogOpen(false);
-      fetchInventory(); // Refetch inventory to update the table
+      fetchInventory(); 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         // console.error("Error saving item to Firestore:", error);
@@ -235,7 +245,7 @@ export default function InventoryPage() {
           .then(res => res.blob())
           .then(blob => {
             const file = new File([blob], "camera-capture.png", { type: "image/png" });
-            form.setValue("imageFile", file); // Set the file for upload
+            form.setValue("imageFile", file); 
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
@@ -336,7 +346,7 @@ export default function InventoryPage() {
                   <FormField
                     control={form.control}
                     name="imageFile"
-                    render={() => ( // field is not directly used as value is managed by handleImageFileChange
+                    render={() => ( 
                       <FormItem>
                         <FormLabel>Item Image (Optional)</FormLabel>
                         <div className="flex items-center gap-4">
@@ -431,4 +441,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
