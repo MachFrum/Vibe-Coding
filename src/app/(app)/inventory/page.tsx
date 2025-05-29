@@ -37,6 +37,9 @@ const inventoryItemSchema = z.object({
   image: z.any().optional(),
 });
 
+// Placeholder for business name - in a real app, this would come from context or data store
+const businessName = "Your Business Name";
+
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
@@ -160,7 +163,7 @@ export default function InventoryPage() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Inventory Log</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{businessName}'s Inventory Log</h1>
           <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -243,7 +246,7 @@ export default function InventoryPage() {
                   <FormField
                     control={form.control}
                     name="image"
-                    render={({ field }) => (
+                    render={({ field }) => ( // field is not directly used for input value if handleImageChange manages it.
                       <FormItem>
                         <FormLabel>Item Image (Optional)</FormLabel>
                         <div className="flex items-center gap-4">
@@ -287,6 +290,11 @@ export default function InventoryPage() {
           <CardHeader>
             <CardTitle>Current Stock</CardTitle>
             <CardDescription>Manage your product inventory, track stock levels, and set low stock alerts.</CardDescription>
+             <p className="text-sm text-muted-foreground pt-2">
+              Clients looking to shop locally will see your inventory when they explore nearby businesses. 
+              The way you’ve set up your portfolio on your ‘My Business’ page is exactly how they’ll view you. 
+              Your items appear when they click your banner.
+            </p>
           </CardHeader>
           <CardContent>
             <InventoryTable columns={inventoryColumns} data={inventory} />
