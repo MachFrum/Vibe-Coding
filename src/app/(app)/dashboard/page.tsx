@@ -1,19 +1,36 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Package, AlertTriangle, TrendingUp, TrendingDown, Users, ShoppingCart } from "lucide-react";
 import type { KeyMetric } from "@/types";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { Button } from "@/components/ui/button";
+import { useState, useMemo } from "react";
 
-const chartData = [
-  { month: "Jan", revenue: 1860, expenses: 800 },
-  { month: "Feb", revenue: 3050, expenses: 1200 },
-  { month: "Mar", revenue: 2370, expenses: 950 },
-  { month: "Apr", revenue: 730, expenses: 1500 },
-  { month: "May", revenue: 2090, expenses: 1000 },
-  { month: "Jun", revenue: 2140, expenses: 1100 },
+type TimePeriod = 'daily' | 'weekly' | 'monthly';
+
+const monthlyFinancialData = [
+  { period: "Jan", revenue: 1860, expenses: 800 },
+  { period: "Feb", revenue: 3050, expenses: 1200 },
+  { period: "Mar", revenue: 2370, expenses: 950 },
+  { period: "Apr", revenue: 730, expenses: 1500 },
+  { period: "May", revenue: 2090, expenses: 1000 },
+  { period: "Jun", revenue: 2140, expenses: 1100 },
 ];
+
+const weeklyFinancialData = Array.from({ length: 8 }, (_, i) => ({
+  period: `W${i + 1}`,
+  revenue: Math.floor(Math.random() * 1000) + 500,
+  expenses: Math.floor(Math.random() * 500) + 200,
+}));
+
+const dailyFinancialData = Array.from({ length: 7 }, (_, i) => ({
+  period: `Day ${i + 1}`,
+  revenue: Math.floor(Math.random() * 200) + 50,
+  expenses: Math.floor(Math.random() * 100) + 20,
+}));
 
 const chartConfig: ChartConfig = {
   revenue: { label: "Revenue", color: "hsl(var(--chart-1))" },
@@ -22,12 +39,20 @@ const chartConfig: ChartConfig = {
 
 
 export default function DashboardPage() {
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('monthly');
+
   const metrics: KeyMetric[] = [
     { title: "Cash Balance", value: "$12,345.67", icon: DollarSign, trend: "up", trendValue: "+5.2%" },
     { title: "Inventory Items", value: 1205, icon: Package, trend: "neutral" },
     { title: "Low Stock Alerts", value: 15, icon: AlertTriangle, trend: "down", trendValue: "-3" },
     { title: "Total Sales (Month)", value: "$5,800", icon: ShoppingCart, trend: "up", trendValue: "+12%" },
   ];
+
+  const displayFinancialData = useMemo(() => {
+    if (timePeriod === 'daily') return dailyFinancialData;
+    if (timePeriod === 'weekly') return weeklyFinancialData;
+    return monthlyFinancialData;
+  }, [timePeriod]);
 
   return (
     <div className="space-y-6">
@@ -54,22 +79,40 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-1"> {/* Changed to 1 column for focused chart area */}
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Revenue vs Expenses</CardTitle>
-            <CardDescription>Monthly financial overview for the last 6 months.</CardDescription>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <CardTitle>Revenue vs Expenses</CardTitle>
+                <CardDescription>
+                  {timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)} financial overview. Use buttons to change period.
+                </CardDescription>
+              </div>
+              <div className="flex gap-1">
+                {(['daily', 'weekly', 'monthly'] as TimePeriod[]).map(period => (
+                  <Button
+                    key={period}
+                    variant={timePeriod === period ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTimePeriod(period)}
+                  >
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <BarChart data={chartData} accessibilityLayer>
+              <BarChart data={displayFinancialData} accessibilityLayer>
                 <CartesianGrid vertical={false} />
                 <XAxis
-                  dataKey="month"
+                  dataKey="period"
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
-                  tickFormatter={(value) => value.slice(0, 3)}
+                  tickFormatter={(value) => typeof value === 'string' ? (value.length > 3 && timePeriod === 'monthly' ? value.slice(0, 3) : value) : value}
                 />
                 <YAxis />
                 <ChartTooltipContent />
@@ -81,7 +124,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-md">
+        <Card className="shadow-md"> {/* Moved Recent Activity below the chart card */}
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
              <CardDescription>Quick overview of recent transactions and inventory changes.</CardDescription>

@@ -1,24 +1,41 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { TrendingUp, TrendingDown, DollarSign, Package, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState, useMemo } from "react";
 
-const salesData = [
-  { month: 'Jan', sales: 4000, profit: 2400 },
-  { month: 'Feb', sales: 3000, profit: 1398 },
-  { month: 'Mar', sales: 2000, profit: 9800 },
-  { month: 'Apr', sales: 2780, profit: 3908 },
-  { month: 'May', sales: 1890, profit: 4800 },
-  { month: 'Jun', sales: 2390, profit: 3800 },
+type TimePeriod = 'daily' | 'weekly' | 'monthly';
+
+// Sales Data
+const monthlySalesData = [
+  { period: 'Jan', sales: 4000, profit: 2400 },
+  { period: 'Feb', sales: 3000, profit: 1398 },
+  { period: 'Mar', sales: 2000, profit: 9800 },
+  { period: 'Apr', sales: 2780, profit: 3908 },
+  { period: 'May', sales: 1890, profit: 4800 },
+  { period: 'Jun', sales: 2390, profit: 3800 },
 ];
+const weeklySalesData = Array.from({ length: 8 }, (_, i) => ({
+  period: `W${i + 1}`,
+  sales: Math.floor(Math.random() * 1500) + 500,
+  profit: Math.floor(Math.random() * 800) + 200,
+}));
+const dailySalesData = Array.from({ length: 7 }, (_, i) => ({
+  period: `Day ${i + 1}`,
+  sales: Math.floor(Math.random() * 300) + 100,
+  profit: Math.floor(Math.random() * 150) + 50,
+}));
 
 const salesChartConfig: ChartConfig = {
   sales: { label: "Sales", color: "hsl(var(--chart-1))" },
   profit: { label: "Profit", color: "hsl(var(--chart-2))" },
 };
 
+// Expense Data (remains monthly for Pie Chart)
 const expenseData = [
   { name: 'Marketing', value: 400 },
   { name: 'Operations', value: 300 },
@@ -27,29 +44,60 @@ const expenseData = [
   { name: 'Salaries', value: 1200 },
 ];
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-
 const expenseChartConfig: ChartConfig = Object.fromEntries(
   expenseData.map((entry, index) => [
-    entry.name.toLowerCase(),
+    entry.name.toLowerCase().replace(/\s+/g, ''), // create a valid key
     { label: entry.name, color: COLORS[index % COLORS.length] },
   ])
 );
 
 
-const inventoryTurnoverData = [
-  { month: 'Jan', turnoverRate: 2.5 },
-  { month: 'Feb', turnoverRate: 2.8 },
-  { month: 'Mar', turnoverRate: 2.2 },
-  { month: 'Apr', turnoverRate: 3.1 },
-  { month: 'May', turnoverRate: 2.9 },
-  { month: 'Jun', turnoverRate: 3.5 },
+// Inventory Turnover Data
+const monthlyInventoryTurnoverData = [
+  { period: 'Jan', turnoverRate: 2.5 },
+  { period: 'Feb', turnoverRate: 2.8 },
+  { period: 'Mar', turnoverRate: 2.2 },
+  { period: 'Apr', turnoverRate: 3.1 },
+  { period: 'May', turnoverRate: 2.9 },
+  { period: 'Jun', turnoverRate: 3.5 },
 ];
+const weeklyInventoryTurnoverData = Array.from({ length: 8 }, (_, i) => ({
+  period: `W${i + 1}`,
+  turnoverRate: parseFloat((Math.random() * 2 + 1).toFixed(1)),
+}));
+const dailyInventoryTurnoverData = Array.from({ length: 7 }, (_, i) => ({
+  period: `Day ${i + 1}`,
+  turnoverRate: parseFloat((Math.random() * 0.5 + 0.2).toFixed(1)),
+}));
 
 const inventoryChartConfig: ChartConfig = {
   turnoverRate: { label: "Turnover Rate", color: "hsl(var(--chart-3))" },
 };
 
 export default function ReportsPage() {
+  const [salesTimePeriod, setSalesTimePeriod] = useState<TimePeriod>('monthly');
+  const [inventoryTimePeriod, setInventoryTimePeriod] = useState<TimePeriod>('monthly');
+
+  const displaySalesData = useMemo(() => {
+    if (salesTimePeriod === 'daily') return dailySalesData;
+    if (salesTimePeriod === 'weekly') return weeklySalesData;
+    return monthlySalesData;
+  }, [salesTimePeriod]);
+
+  const displayInventoryData = useMemo(() => {
+    if (inventoryTimePeriod === 'daily') return dailyInventoryTurnoverData;
+    if (inventoryTimePeriod === 'weekly') return weeklyInventoryTurnoverData;
+    return monthlyInventoryTurnoverData;
+  }, [inventoryTimePeriod]);
+  
+  const formatTick = (value: any, timePeriod: TimePeriod) => {
+    if (typeof value === 'string') {
+      if (timePeriod === 'monthly' && value.length > 3) return value.slice(0,3);
+      return value;
+    }
+    return value;
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
@@ -87,18 +135,41 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Sales Overview</CardTitle>
-            <CardDescription>Monthly sales and profit trends.</CardDescription>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <CardTitle>Sales Overview</CardTitle>
+                <CardDescription>
+                   {salesTimePeriod.charAt(0).toUpperCase() + salesTimePeriod.slice(1)} sales and profit trends.
+                </CardDescription>
+              </div>
+              <div className="flex gap-1">
+                {(['daily', 'weekly', 'monthly'] as TimePeriod[]).map(period => (
+                  <Button
+                    key={period}
+                    variant={salesTimePeriod === period ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSalesTimePeriod(period)}
+                  >
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <ChartContainer config={salesChartConfig} className="h-[300px] w-full">
-              <BarChart data={salesData} accessibilityLayer>
+              <BarChart data={displaySalesData} accessibilityLayer>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} />
+                <XAxis 
+                  dataKey="period" 
+                  tickLine={false} 
+                  tickMargin={10} 
+                  axisLine={false} 
+                  tickFormatter={(value) => formatTick(value, salesTimePeriod)}
+                />
                 <YAxis />
                 <ChartTooltipContent />
                 <Legend />
@@ -112,7 +183,7 @@ export default function ReportsPage() {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Expense Breakdown</CardTitle>
-            <CardDescription>Distribution of expenses by category.</CardDescription>
+            <CardDescription>Distribution of expenses by category (monthly).</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-center">
              <ChartContainer config={expenseChartConfig} className="h-[300px] w-full aspect-square">
@@ -132,14 +203,35 @@ export default function ReportsPage() {
 
        <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Inventory Turnover Rate</CardTitle>
-            <CardDescription>How quickly inventory is sold and replenished.</CardDescription>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <CardTitle>Inventory Turnover Rate</CardTitle>
+                  <CardDescription>
+                    {inventoryTimePeriod.charAt(0).toUpperCase() + inventoryTimePeriod.slice(1)} rate of inventory sale and replenishment.
+                  </CardDescription>
+                </div>
+              <div className="flex gap-1">
+                {(['daily', 'weekly', 'monthly'] as TimePeriod[]).map(period => (
+                  <Button
+                    key={period}
+                    variant={inventoryTimePeriod === period ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setInventoryTimePeriod(period)}
+                  >
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <ChartContainer config={inventoryChartConfig} className="h-[300px] w-full">
-              <LineChart data={inventoryTurnoverData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} accessibilityLayer>
+              <LineChart data={displayInventoryData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} accessibilityLayer>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
+                <XAxis 
+                  dataKey="period"
+                  tickFormatter={(value) => formatTick(value, inventoryTimePeriod)}
+                />
                 <YAxis />
                 <ChartTooltipContent />
                 <Legend />
@@ -151,3 +243,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
