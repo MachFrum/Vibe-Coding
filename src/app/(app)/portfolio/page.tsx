@@ -15,12 +15,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell } from "lucide-react";
+import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell, ImagePlus } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { useBusiness } from "@/contexts/BusinessContext"; // Import useBusiness
+import { useBusiness } from "@/contexts/BusinessContext";
 
-// Mock inventory data for selection
 const mockInventoryForPortfolio: InventoryItem[] = [
   { id: "item-1", name: "Handcrafted Mug", quantity: 25, unitPrice: 15.99, lowStockThreshold: 5, supplier: "Artisan Goods Co." },
   { id: "item-2", name: "Organic Coffee Blend", quantity: 50, unitPrice: 12.50, lowStockThreshold: 10, supplier: "Bean Masters" },
@@ -28,12 +27,23 @@ const mockInventoryForPortfolio: InventoryItem[] = [
   { id: "item-4", name: "Scented Soy Candle", quantity: 60, unitPrice: 18.00, lowStockThreshold: 15, supplier: "Home Fragrances" },
 ];
 
+// Keys for localStorage
+const PORTFOLIO_DESC_KEY = 'malitrack-portfolio-description';
+const PORTFOLIO_LOCATION_KEY = 'malitrack-portfolio-location';
+const PORTFOLIO_VIDEO_URL_KEY = 'malitrack-portfolio-video-url';
+const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url';
+const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';
+const PORTFOLIO_FEATURED_ITEMS_KEY = 'malitrack-portfolio-featured-items';
+const PORTFOLIO_BEST_SELLING_ITEMS_KEY = 'malitrack-portfolio-best-selling-items';
+const PORTFOLIO_SALE_ITEMS_KEY = 'malitrack-portfolio-sale-items';
+// Payment settings could also be stored similarly if not using a real backend
+
 const portfolioSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters."),
   businessDescription: z.string().min(10, "Description must be at least 10 characters.").max(500, "Description too long."),
   businessLocation: z.string().optional(),
-  bannerImage: z.any().optional(),
-  profileImage: z.any().optional(),
+  bannerImageFile: z.any().optional(), // For file input
+  profileImageFile: z.any().optional(), // For file input
   videoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   featuredItems: z.array(z.string()).optional(),
   bestSellingItems: z.array(z.string()).optional(),
@@ -52,12 +62,12 @@ type MessageCategory = "buyers" | "suppliers" | "malitrack" | "finance";
 
 export default function PortfolioPage() {
   const { toast } = useToast();
-  const { businessName: contextBusinessName, setBusinessName } = useBusiness(); // Get from context
+  const { businessName: contextBusinessName, setBusinessName: setContextBusinessName } = useBusiness();
+  
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
   const [activeMessageCategory, setActiveMessageCategory] = useState<MessageCategory | null>(null);
 
-  // Mock unread counts
   const [unreadCounts, setUnreadCounts] = useState({
     buyers: 3,
     suppliers: 1,
@@ -68,7 +78,7 @@ export default function PortfolioPage() {
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioSchema),
     defaultValues: {
-      businessName: "", // Will be set by useEffect
+      businessName: contextBusinessName || "",
       businessDescription: "Selling the best widgets in town since 2023. High quality and great service guaranteed!",
       businessLocation: "123 Market St, BizTown, BT 54321",
       videoUrl: "",
@@ -85,21 +95,49 @@ export default function PortfolioPage() {
     },
   });
 
-  // Effect to initialize form's businessName with value from context (localStorage)
   useEffect(() => {
+    // Load data from localStorage on mount
     if (contextBusinessName) {
       form.setValue("businessName", contextBusinessName);
     }
+    const storedDescription = localStorage.getItem(PORTFOLIO_DESC_KEY);
+    if (storedDescription) form.setValue("businessDescription", storedDescription);
+    
+    const storedLocation = localStorage.getItem(PORTFOLIO_LOCATION_KEY);
+    if (storedLocation) form.setValue("businessLocation", storedLocation);
+
+    const storedVideoUrl = localStorage.getItem(PORTFOLIO_VIDEO_URL_KEY);
+    if (storedVideoUrl) form.setValue("videoUrl", storedVideoUrl);
+
+    const storedBanner = localStorage.getItem(PORTFOLIO_BANNER_KEY);
+    if (storedBanner) setBannerPreview(storedBanner);
+
+    const storedLogo = localStorage.getItem(PORTFOLIO_LOGO_KEY);
+    if (storedLogo) setProfilePreview(storedLogo);
+    
+    const storedFeatured = localStorage.getItem(PORTFOLIO_FEATURED_ITEMS_KEY);
+    if (storedFeatured) form.setValue("featuredItems", JSON.parse(storedFeatured));
+
+    const storedBestSelling = localStorage.getItem(PORTFOLIO_BEST_SELLING_ITEMS_KEY);
+    if (storedBestSelling) form.setValue("bestSellingItems", JSON.parse(storedBestSelling));
+
+    const storedSale = localStorage.getItem(PORTFOLIO_SALE_ITEMS_KEY);
+    if (storedSale) form.setValue("saleItems", JSON.parse(storedSale));
+
+    // Could load payment settings from localStorage too
   }, [contextBusinessName, form]);
 
-
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>, setImagePreviewFn: React.Dispatch<React.SetStateAction<string | null>>, fieldName: "bannerImage" | "profileImage") => {
+  const handleImageChange = (
+    e: ChangeEvent<HTMLInputElement>,
+    setImagePreviewFn: React.Dispatch<React.SetStateAction<string | null>>,
+    fieldName: "bannerImageFile" | "profileImageFile"
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreviewFn(reader.result as string);
-        form.setValue(fieldName, file);
+        setImagePreviewFn(reader.result as string); // This is a Data URI
+        form.setValue(fieldName, file); // Store the file object in form state
       };
       reader.readAsDataURL(file);
     } else {
@@ -109,13 +147,31 @@ export default function PortfolioPage() {
   };
 
   function onSubmit(data: PortfolioFormValues) {
-    console.log("Portfolio data submitted:", data);
+    // Save to localStorage
     if (data.businessName) {
-      setBusinessName(data.businessName); // Update context and localStorage
+      setContextBusinessName(data.businessName); // Updates context and localStorage
     }
+    localStorage.setItem(PORTFOLIO_DESC_KEY, data.businessDescription);
+    if(data.businessLocation) localStorage.setItem(PORTFOLIO_LOCATION_KEY, data.businessLocation);
+    if(data.videoUrl) localStorage.setItem(PORTFOLIO_VIDEO_URL_KEY, data.videoUrl);
+
+    // For banner and profile images, save their Data URI previews to localStorage
+    // In a real app, you would upload data.bannerImageFile/profileImageFile to Firebase Storage
+    // and save the returned URL. Here, we use the preview directly for simulation.
+    if (bannerPreview) localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerPreview);
+      else localStorage.removeItem(PORTFOLIO_BANNER_KEY);
+    if (profilePreview) localStorage.setItem(PORTFOLIO_LOGO_KEY, profilePreview);
+      else localStorage.removeItem(PORTFOLIO_LOGO_KEY);
+
+    if(data.featuredItems) localStorage.setItem(PORTFOLIO_FEATURED_ITEMS_KEY, JSON.stringify(data.featuredItems));
+    if(data.bestSellingItems) localStorage.setItem(PORTFOLIO_BEST_SELLING_ITEMS_KEY, JSON.stringify(data.bestSellingItems));
+    if(data.saleItems) localStorage.setItem(PORTFOLIO_SALE_ITEMS_KEY, JSON.stringify(data.saleItems));
+
+    // Simulate saving payment settings if needed
+
     toast({
       title: "Portfolio Updated",
-      description: "Your business portfolio has been saved successfully.",
+      description: "Your business portfolio has been saved successfully (locally).",
     });
   }
 
@@ -184,12 +240,23 @@ export default function PortfolioPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="bannerImage"
-                  render={({ field }) => (
+                  name="bannerImageFile"
+                  render={() => ( // field is not directly used since we handle file via state
                     <FormItem>
                       <FormLabel>Banner Image (e.g., for your shop front)</FormLabel>
                       <FormControl>
-                        <Input type="file" accept="image/*" onChange={(e) => handleImageChange(e, setBannerPreview, "bannerImage")} />
+                        <div className="flex items-center gap-2">
+                           <Input 
+                            id="bannerImageFile"
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => handleImageChange(e, setBannerPreview, "bannerImageFile")} 
+                            className="hidden"
+                          />
+                          <Button type="button" variant="outline" onClick={() => document.getElementById('bannerImageFile')?.click()}>
+                            <ImagePlus className="mr-2 h-4 w-4"/> Choose Banner
+                          </Button>
+                        </div>
                       </FormControl>
                       {bannerPreview && <Image src={bannerPreview} alt="Banner preview" width={300} height={150} className="mt-2 rounded-md object-cover aspect-[2/1]" data-ai-hint="store banner" />}
                       <FormMessage />
@@ -198,12 +265,23 @@ export default function PortfolioPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="profileImage"
-                  render={({ field }) => (
+                  name="profileImageFile"
+                  render={() => ( // field is not directly used
                     <FormItem>
                       <FormLabel>Profile/Logo Image</FormLabel>
-                      <FormControl>
-                        <Input type="file" accept="image/*" onChange={(e) => handleImageChange(e, setProfilePreview, "profileImage")} />
+                       <FormControl>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            id="profileImageFile"
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => handleImageChange(e, setProfilePreview, "profileImageFile")} 
+                            className="hidden"
+                          />
+                           <Button type="button" variant="outline" onClick={() => document.getElementById('profileImageFile')?.click()}>
+                            <ImagePlus className="mr-2 h-4 w-4"/> Choose Logo
+                          </Button>
+                        </div>
                       </FormControl>
                       {profilePreview && <Image src={profilePreview} alt="Profile preview" width={100} height={100} className="mt-2 rounded-full object-cover aspect-square" data-ai-hint="business logo" />}
                       <FormMessage />

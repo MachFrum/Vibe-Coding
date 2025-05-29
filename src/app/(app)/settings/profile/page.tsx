@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, type ChangeEvent } from 'react';
+import React, { useState, type ChangeEvent, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,28 +12,50 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfileImage } from '@/lib/firebase'; // Using real function
-// import { updateProfile } from "firebase/auth"; // If you want to update Auth user profile
+import { uploadProfileImage, auth } from '@/lib/firebase'; // Using real function
+import { updateProfile } from "firebase/auth"; 
 
 const getInitials = (name?: string | null) => {
   if (!name) return "U";
   const names = name.split(" ");
   const initials = names.map((n) => n[0]).join("");
-  return initials.toUpperCase() || "U"; // Default to 'U' if name results in empty initials
+  return initials.toUpperCase() || "U";
 };
+
+// Keys for localStorage for portfolio items (as a fallback for this page)
+const PORTFOLIO_DESC_KEY = 'malitrack-portfolio-description';
+const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url';
+const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';
+
 
 export default function ProfilePage() {
   const { businessName } = useBusiness();
   const { currentUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(currentUser?.photoURL || null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // In a real app, portfolio description & images would come from a data store or context
-  const mockBusinessDescription = "This is a placeholder description for the business. Update it in 'Your Portfolio' page.";
-  const mockBannerImageUrl = "https://placehold.co/800x200.png";
-  const mockProfileImageUrl = "https://placehold.co/200x200.png"; // Placeholder for business logo
+  // Mock data for portfolio (will load from localStorage if available)
+  const [mockBusinessDescription, setMockBusinessDescription] = useState("This is a placeholder description for your business. Update it on the 'Your Portfolio' page.");
+  const [mockBannerImageUrl, setMockBannerImageUrl] = useState<string | null>("https://placehold.co/800x200.png");
+  const [mockProfileImageUrl, setMockProfileImageUrl] = useState<string | null>("https://placehold.co/200x200.png");
+
+
+  useEffect(() => {
+    if (currentUser?.photoURL) {
+      setProfileImagePreview(currentUser.photoURL);
+    }
+    // Load portfolio data from localStorage for display on this page
+    const storedDesc = localStorage.getItem(PORTFOLIO_DESC_KEY);
+    if (storedDesc) setMockBusinessDescription(storedDesc);
+    const storedBanner = localStorage.getItem(PORTFOLIO_BANNER_KEY);
+    if (storedBanner) setMockBannerImageUrl(storedBanner);
+    const storedLogo = localStorage.getItem(PORTFOLIO_LOGO_KEY);
+    if (storedLogo) setMockProfileImageUrl(storedLogo);
+
+  }, [currentUser]);
+
 
   const handleProfileImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,7 +68,7 @@ export default function ProfilePage() {
       reader.readAsDataURL(file);
     } else {
       setProfileImageFile(null);
-      setProfileImagePreview(null);
+      setProfileImagePreview(currentUser?.photoURL || null); // Revert to current or null
     }
   };
 
@@ -57,23 +79,35 @@ export default function ProfilePage() {
     }
     setIsUploading(true);
     try {
+      // The uploadProfileImage function already updates Firebase Auth user's photoURL
       const downloadURL = await uploadProfileImage(currentUser.uid, profileImageFile);
-      // To update the user's photoURL in Firebase Auth:
-      // if (auth.currentUser) { // auth should be imported from @/lib/firebase
-      //   await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      // }
-      // For this prototype, we'll just update the preview and show a success toast.
-      // For the change to reflect immediately in UserNav, AuthContext would need to re-fetch or update the user.
-      setProfileImagePreview(downloadURL); // Update preview with "uploaded" URL
+      
+      // We also need to ensure the local state for preview reflects the new URL
+      // and that AuthContext's currentUser might get updated if other components rely on it.
+      // For now, setting local preview and showing toast.
+      setProfileImagePreview(downloadURL);
+      
       toast({ title: "Profile Image Uploaded", description: "Your new profile image is set." });
-      // Consider calling a function in AuthContext to refresh currentUser if needed for immediate update in UserNav.
+      // To reflect the change immediately in UserNav, AuthContext might need a way to refresh currentUser.
+      // Or, we can update the photoURL on the currentUser object if the context allows it (it currently doesn't expose a setter).
+      // For simplicity, user might need to refresh or re-login for UserNav to pick up the change directly from a fresh auth state.
+      // However, the new image will be used on next load due to onAuthStateChanged.
+      if (auth.currentUser) {
+         // Manually update the current user object in the auth instance
+         // This might not immediately propagate to all useAuth() consumers
+         // unless AuthContext re-fetches or updates its internal state.
+         // The most reliable way is that onAuthStateChanged will pick this up on next reload.
+      }
+
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error("Profile image upload error:", error);
       }
-      toast({ title: "Upload Failed", description: "Could not upload profile image.", variant: "destructive" });
+      toast({ title: "Upload Failed", description: "Could not upload profile image. Check console for details.", variant: "destructive" });
+      setProfileImagePreview(currentUser?.photoURL || null); // Revert preview on error
     } finally {
       setIsUploading(false);
+      setProfileImageFile(null); // Clear the selected file
     }
   };
 
@@ -86,8 +120,6 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-    // This page should be protected by the AppLayout, so this might not be strictly necessary
-    // but it's a good fallback.
     return <div className="text-center py-10">Please sign in to view your profile.</div>;
   }
 
@@ -102,7 +134,7 @@ export default function ProfilePage() {
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
           <div className="flex flex-col items-center gap-4">
             <Avatar className="h-24 w-24 md:h-32 md:w-32">
-              <AvatarImage src={profileImagePreview || currentUser.photoURL || "https://placehold.co/100x100.png"} alt={currentUser.displayName || currentUser.email || "User"} data-ai-hint="user avatar large" />
+              <AvatarImage src={profileImagePreview || "https://placehold.co/128x128.png"} alt={currentUser.displayName || currentUser.email || "User"} data-ai-hint="user avatar large" />
               <AvatarFallback>{getInitials(currentUser.displayName || currentUser.email)}</AvatarFallback>
             </Avatar>
             <div className="grid w-full max-w-sm items-center gap-1.5">
@@ -110,7 +142,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 <Input id="profile-picture" type="file" accept="image/*" onChange={handleProfileImageChange} className="text-xs"/>
               </div>
-               {profileImageFile && ( // Show upload button only if a new file is selected
+               {profileImageFile && ( 
                 <Button onClick={handleProfileImageUpload} size="sm" className="mt-2 w-full" disabled={isUploading}>
                   {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
                    {isUploading ? "Uploading..." : "Upload New Picture"}
@@ -132,19 +164,19 @@ export default function ProfilePage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="flex items-center"><Building className="mr-2 h-5 w-5 text-primary" />Business Portfolio Summary</CardTitle>
-          <CardDescription>Overview of your primary business linked to MaliTrack.</CardDescription>
+          <CardDescription>Overview of your primary business. Edit details on the "Your Portfolio" page.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold">{businessName || "Your Business Name (Set in Portfolio)"}</h3>
+            <h3 className="text-lg font-semibold">{businessName || "Your Business Name"}</h3>
             <p className="text-sm text-muted-foreground mt-1">{mockBusinessDescription}</p>
           </div>
           <div className="space-y-3">
             <div>
               <p className="text-sm font-medium mb-1">Banner Image (from Portfolio):</p>
               <Image
-                src={mockBannerImageUrl}
-                alt="Business Banner Placeholder"
+                src={mockBannerImageUrl || "https://placehold.co/800x200.png"}
+                alt="Business Banner"
                 width={600}
                 height={150}
                 className="rounded-md object-cover aspect-[4/1]"
@@ -154,8 +186,8 @@ export default function ProfilePage() {
             <div>
               <p className="text-sm font-medium mb-1">Profile/Logo Image (from Portfolio):</p>
               <Image
-                src={mockProfileImageUrl}
-                alt="Business Profile Placeholder"
+                src={mockProfileImageUrl || "https://placehold.co/200x200.png"}
+                alt="Business Profile/Logo"
                 width={150}
                 height={150}
                 className="rounded-md object-cover aspect-square"
