@@ -1,5 +1,5 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -18,6 +18,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'MaliTrack - Small Business Management',
   description: 'Bookkeeping, inventory, and local networking for small businesses.',
+  manifest: '/manifest.json', // Link to the manifest file
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'MaliTrack',
+    // startupImage: [], // You can add startup images for iOS
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#7A9D96', // Corresponds to theme_color in manifest
 };
 
 export default function RootLayout({
