@@ -14,8 +14,9 @@ import {
   onAuthStateChanged as firebaseOnAuthStateChanged, // Renamed to avoid conflict
   updateProfile
 } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFirestore, type Firestore, collection, addDoc, getDocs, serverTimestamp, Timestamp } from "firebase/firestore"; // Added Firestore imports
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, type FirebaseStorage, type UploadTaskSnapshot } from "firebase/storage";
+import type { InventoryItem } from "@/types";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -39,7 +40,7 @@ if (!firebaseConfig.apiKey && process.env.NODE_ENV === 'development') {
 
 let app: FirebaseApp;
 let auth: Auth;
-let db: Firestore;
+let db: Firestore; // Added db
 let storage: FirebaseStorage;
 
 if (!getApps().length) {
@@ -52,7 +53,7 @@ if (!getApps().length) {
 }
 
 auth = getAuth(app);
-db = getFirestore(app);
+db = getFirestore(app); // Initialize Firestore
 storage = getStorage(app);
 
 // Export the User type from firebase/auth
@@ -84,12 +85,12 @@ const onAuthStateChanged = (callback: (user: User | null) => void): (() => void)
 
 // Storage functions
 const uploadProfileImage = async (
-  userId: string, 
+  userId: string,
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<string> => {
   const fileRef = storageRef(storage, `users/${userId}/profile-${Date.now()}-${file.name}`);
-  
+
   return new Promise((resolve, reject) => {
     const uploadTask = uploadBytesResumable(fileRef, file, {
       customMetadata: {
@@ -103,7 +104,7 @@ const uploadProfileImage = async (
       (snapshot: UploadTaskSnapshot) => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         if (process.env.NODE_ENV === 'development') {
-          console.log('Upload is ' + progress + '% done');
+          // console.log('Upload is ' + progress + '% done');
         }
         if (onProgress) {
           onProgress(progress);
@@ -111,7 +112,7 @@ const uploadProfileImage = async (
       },
       (error) => {
         if (process.env.NODE_ENV === 'development') {
-          console.error("Upload failed:", error);
+          // console.error("Upload failed:", error);
         }
         reject(error);
       },
@@ -124,7 +125,7 @@ const uploadProfileImage = async (
           resolve(downloadURL);
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error("Error getting download URL or updating profile:", error);
+            // console.error("Error getting download URL or updating profile:", error);
           }
           reject(error);
         }
@@ -134,14 +135,14 @@ const uploadProfileImage = async (
 };
 
 const uploadBusinessImage = async (
-  userId: string, 
-  imageType: 'banner' | 'logo', 
+  userId: string,
+  imageType: 'banner' | 'logo',
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<string> => {
   const fileName = `${imageType}-${Date.now()}-${file.name}`;
   const fileRef = storageRef(storage, `businesses/${userId}/${imageType}/${fileName}`);
-  
+
   return new Promise((resolve, reject) => {
     const uploadTask = uploadBytesResumable(fileRef, file, {
       customMetadata: {
@@ -156,7 +157,7 @@ const uploadBusinessImage = async (
       (snapshot: UploadTaskSnapshot) => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
          if (process.env.NODE_ENV === 'development') {
-          console.log(`Business ${imageType} upload is ` + progress + '% done');
+          // console.log(`Business ${imageType} upload is ` + progress + '% done');
         }
         if (onProgress) {
           onProgress(progress);
@@ -164,7 +165,7 @@ const uploadBusinessImage = async (
       },
       (error) => {
          if (process.env.NODE_ENV === 'development') {
-          console.error(`Business ${imageType} upload failed:`, error);
+          // console.error(`Business ${imageType} upload failed:`, error);
         }
         reject(error);
       },
@@ -174,7 +175,7 @@ const uploadBusinessImage = async (
           resolve(downloadURL);
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error(`Error getting business ${imageType} download URL:`, error);
+            // console.error(`Error getting business ${imageType} download URL:`, error);
           }
           reject(error);
         }
@@ -183,18 +184,86 @@ const uploadBusinessImage = async (
   });
 };
 
+// --- Firestore Placeholder Functions for Inventory ---
+// NOTE: Replace 'your_business_id' with actual dynamic business ID from user context or similar.
+// You'll need to implement proper error handling and potentially more complex queries.
+
+// Example: Add an inventory item to Firestore
+const addInventoryItemToFirestore = async (businessId: string, itemData: Omit<InventoryItem, 'id' | 'image'> & { imageUrl?: string }): Promise<string> => {
+  if (!auth.currentUser) throw new Error("User not authenticated");
+  if (!businessId) throw new Error("Business ID is required");
+
+  try {
+    const docRef = await addDoc(collection(db, "businesses", businessId, "inventory"), {
+      ...itemData,
+      userId: auth.currentUser.uid, // Associate item with the user who added it
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Inventory item added with ID: ", docRef.id);
+    }
+    return docRef.id;
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error adding inventory item to Firestore: ", error);
+    }
+    throw error; // Re-throw to be handled by the caller
+  }
+};
+
+// Example: Get inventory items from Firestore
+const getInventoryItemsFromFirestore = async (businessId: string): Promise<InventoryItem[]> => {
+  if (!auth.currentUser) throw new Error("User not authenticated");
+  if (!businessId) throw new Error("Business ID is required");
+  
+  const items: InventoryItem[] = [];
+  try {
+    const querySnapshot = await getDocs(collection(db, "businesses", businessId, "inventory"));
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        name: data.name,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice,
+        lowStockThreshold: data.lowStockThreshold,
+        supplier: data.supplier,
+        // Assuming 'imageUrl' might be stored from form.image if it's a URL
+        // If actual image file needs handling, this type and logic would differ.
+        // image: data.imageUrl, // Adjust based on how image is stored/handled
+      });
+    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Fetched inventory items: ", items);
+    }
+    return items;
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error fetching inventory items from Firestore: ", error);
+    }
+    return []; // Return empty array on error or handle appropriately
+  }
+};
+
 
 export {
   app,
   auth,
-  db,
+  db, // Export db
   storage,
   doSignInWithEmailAndPassword,
   doSignInWithGoogle,
   doCreateUserWithEmailAndPassword,
   doSignOut,
   onAuthStateChanged,
+  updateProfile,
   uploadProfileImage,
   uploadBusinessImage,
-  updateProfile
+  // Export placeholder Firestore functions
+  addInventoryItemToFirestore,
+  getInventoryItemsFromFirestore,
 };
+
+// Placeholder for other Firestore functions for Ledger, Transactions, etc.
+// You would create similar add/get/update/delete functions for those collections.

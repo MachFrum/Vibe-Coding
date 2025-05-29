@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/components/ui/textarea"; // Keep if used for item description later
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PlusCircle, ImagePlus, Camera } from "lucide-react";
+import { PlusCircle, ImagePlus, Camera, Loader2 } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { InventoryTable } from "@/components/features/inventory/inventory-table";
 import { inventoryColumns } from "@/components/features/inventory/inventory-columns";
@@ -18,16 +18,11 @@ import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useBusiness } from "@/contexts/BusinessContext"; // Import useBusiness
+import { useBusiness } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { addInventoryItemToFirestore, getInventoryItemsFromFirestore, storage, auth } from "@/lib/firebase"; // Import Firestore functions
+import { ref as storageRefStandard, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
-// Mock data for inventory items
-const mockInventory: InventoryItem[] = [
-  { id: "1", name: "Organic Apples", quantity: 50, unitPrice: 0.75, lowStockThreshold: 20, supplier: "FarmFresh Co." },
-  { id: "2", name: "Whole Wheat Bread", quantity: 30, unitPrice: 3.50, lowStockThreshold: 10, supplier: "Bakery Delights" },
-  { id: "3", name: "Artisan Coffee Beans", quantity: 15, unitPrice: 15.00, lowStockThreshold: 5, supplier: "Roast Masters" },
-  { id: "4", name: "Handmade Soap", quantity: 100, unitPrice: 5.00, lowStockThreshold: 25, supplier: "Natural Scents" },
-  { id: "5", name: "Local Honey Jar", quantity: 25, unitPrice: 8.00, lowStockThreshold: 10 },
-];
 
 const inventoryItemSchema = z.object({
   name: z.string().min(1, "Item name is required."),
@@ -35,22 +30,30 @@ const inventoryItemSchema = z.object({
   unitPrice: z.coerce.number().positive("Unit price must be positive."),
   lowStockThreshold: z.coerce.number().min(0, "Low stock threshold must be non-negative."),
   supplier: z.string().optional(),
-  image: z.any().optional(),
+  imageFile: z.any().optional(), // For the actual file object
 });
 
+type InventoryFormValues = z.infer<typeof inventoryItemSchema>;
+
 export default function InventoryPage() {
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
-  const { businessName } = useBusiness(); // Get business name from context
+  const { businessName } = useBusiness();
+  const { currentUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<z.infer<typeof inventoryItemSchema>>({
+  // Placeholder for business ID - in a real app, this would come from user's context or selected business
+  const DUMMY_BUSINESS_ID = "defaultBusiness123"; 
+
+  const form = useForm<InventoryFormValues>({
     resolver: zodResolver(inventoryItemSchema),
     defaultValues: {
       name: "",
@@ -58,8 +61,37 @@ export default function InventoryPage() {
       unitPrice: 0,
       lowStockThreshold: 0,
       supplier: "",
+      imageFile: null,
     },
   });
+
+  const fetchInventory = async () => {
+    if (!currentUser || !DUMMY_BUSINESS_ID) {
+      setInventory([]); // Clear inventory if no user or business ID
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const items = await getInventoryItemsFromFirestore(DUMMY_BUSINESS_ID);
+      setInventory(items);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error fetching inventory:", error);
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not fetch inventory items.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInventory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]); // Refetch if user changes
 
   useEffect(() => {
     let streamObj: MediaStream | null = null;
@@ -74,7 +106,7 @@ export default function InventoryPage() {
           videoElement.srcObject = streamObj;
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error('Error accessing camera:', error);
+            // console.error('Error accessing camera:', error);
           }
           setHasCameraPermission(false);
           toast({
@@ -98,25 +130,83 @@ export default function InventoryPage() {
     };
   }, [isCameraDialogOpen, toast]);
 
-  function onSubmit(values: z.infer<typeof inventoryItemSchema>) {
-    const newItem: InventoryItem = {
-      id: `item-${Date.now()}`,
-      ...values,
-    };
-    setInventory(prev => [newItem, ...prev]);
-    form.reset();
-    setImagePreview(null);
-    if (fileInputRef.current) {
-        fileInputRef.current.value = ""; 
+  async function onSubmit(values: InventoryFormValues) {
+    if (!currentUser || !DUMMY_BUSINESS_ID) {
+      toast({ variant: "destructive", title: "Error", description: "User not authenticated or business ID missing." });
+      return;
     }
-    setIsAddItemDialogOpen(false);
-    toast({
-      title: "Item Added",
-      description: `${newItem.name} has been successfully added to inventory.`,
-    });
+    setIsSubmitting(true);
+    let imageUrl: string | undefined = undefined;
+
+    if (values.imageFile) {
+      try {
+        const file = values.imageFile as File;
+        const imageRef = storageRefStandard(storage, `businesses/${DUMMY_BUSINESS_ID}/inventory_images/${Date.now()}-${file.name}`);
+        const uploadTask = uploadBytesResumable(imageRef, file);
+        
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed', 
+            null, // progress can be handled here if needed
+            (error) => {
+              if (process.env.NODE_ENV === 'development') {
+                // console.error("Image upload error:", error);
+              }
+              reject(error);
+            }, 
+            async () => {
+              imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve();
+            }
+          );
+        });
+
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          // console.error("Error uploading item image:", error);
+        }
+        toast({ variant: "destructive", title: "Image Upload Failed", description: "Could not upload item image." });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const itemDataToSave = {
+      name: values.name,
+      quantity: values.quantity,
+      unitPrice: values.unitPrice,
+      lowStockThreshold: values.lowStockThreshold,
+      supplier: values.supplier,
+      imageUrl: imageUrl, // Store the cloud URL
+    };
+
+    try {
+      await addInventoryItemToFirestore(DUMMY_BUSINESS_ID, itemDataToSave);
+      toast({
+        title: "Item Added",
+        description: `${values.name} has been successfully added to inventory.`,
+      });
+      form.reset();
+      setImagePreview(null);
+      if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+      }
+      setIsAddItemDialogOpen(false);
+      fetchInventory(); // Refetch inventory to update the table
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        // console.error("Error saving item to Firestore:", error);
+      }
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save item to the database.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -124,10 +214,10 @@ export default function InventoryPage() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      form.setValue("image", file);
+      form.setValue("imageFile", file);
     } else {
       setImagePreview(null);
-      form.setValue("image", null);
+      form.setValue("imageFile", null);
     }
   };
 
@@ -145,9 +235,9 @@ export default function InventoryPage() {
           .then(res => res.blob())
           .then(blob => {
             const file = new File([blob], "camera-capture.png", { type: "image/png" });
-            form.setValue("image", file);
+            form.setValue("imageFile", file); // Set the file for upload
             if (fileInputRef.current) {
-                fileInputRef.current.value = ""; 
+                fileInputRef.current.value = "";
             }
           });
         toast({ title: "Image Captured", description: "Image from camera has been set."});
@@ -166,7 +256,7 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight">{(businessName || "Your Business")}'s Inventory Log</h1>
           <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={!currentUser}>
                 <PlusCircle className="mr-2 h-5 w-5" /> Add New Item
               </Button>
             </DialogTrigger>
@@ -245,8 +335,8 @@ export default function InventoryPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="image"
-                    render={({ field }) => (
+                    name="imageFile"
+                    render={() => ( // field is not directly used as value is managed by handleImageFileChange
                       <FormItem>
                         <FormLabel>Item Image (Optional)</FormLabel>
                         <div className="flex items-center gap-4">
@@ -255,11 +345,11 @@ export default function InventoryPage() {
                               <ImagePlus className="mr-2 h-4 w-4" /> Choose File
                             </Button>
                           </FormControl>
-                          <Input 
-                            type="file" 
-                            className="hidden" 
-                            onChange={handleImageChange} 
-                            accept="image/*" 
+                          <Input
+                            type="file"
+                            className="hidden"
+                            onChange={handleImageFileChange}
+                            accept="image/*"
                             ref={fileInputRef}
                           />
                           <Button type="button" variant="outline" size="sm" onClick={() => setIsCameraDialogOpen(true)}>
@@ -279,7 +369,10 @@ export default function InventoryPage() {
                     <DialogClose asChild>
                         <Button type="button" variant="outline" onClick={() => { form.reset(); setImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ""; }}>Cancel</Button>
                     </DialogClose>
-                    <Button type="submit">Add Item</Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Add Item
+                    </Button>
                   </DialogFooter>
                 </form>
               </Form>
@@ -291,13 +384,20 @@ export default function InventoryPage() {
             <CardTitle>Current Stock</CardTitle>
             <CardDescription>Manage your product inventory, track stock levels, and set low stock alerts.</CardDescription>
              <p className="text-sm text-muted-foreground pt-2">
-              Clients looking to shop locally will see your inventory when they explore nearby businesses. 
-              The way you’ve set up your portfolio on your ‘My Business’ page is exactly how they’ll view you. 
+              Clients looking to shop locally will see your inventory when they explore nearby businesses.
+              The way you’ve set up your portfolio on your ‘My Business’ page is exactly how they’ll view you.
               Your items appear when they click your banner.
             </p>
           </CardHeader>
           <CardContent>
-            <InventoryTable columns={inventoryColumns} data={inventory} />
+            {isLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2">Loading inventory...</p>
+              </div>
+            ) : (
+              <InventoryTable columns={inventoryColumns} data={inventory} />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -331,3 +431,4 @@ export default function InventoryPage() {
     </>
   );
 }
+
