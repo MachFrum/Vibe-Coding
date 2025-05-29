@@ -14,8 +14,9 @@ import * as z from "zod";
 import { MapPin, PlusCircle, Search, Filter } from "lucide-react";
 import type { Supplier } from "@/types";
 import Image from "next/image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react"; // Added useEffect
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/use-debounce"; // Import useDebounce
 
 // Mock data for suppliers
 const mockSuppliers: Supplier[] = [
@@ -38,7 +39,8 @@ const itemTypes = ["All", ...new Set(mockSuppliers.flatMap(s => s.itemsSupplied)
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTermInput, setSearchTermInput] = useState(""); // For direct input
+  const debouncedSearchTerm = useDebounce(searchTermInput, 500); // Debounced value for filtering
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [itemFilter, setItemFilter] = useState("All");
   const [isAddSupplierDialogOpen, setIsAddSupplierDialogOpen] = useState(false);
@@ -57,13 +59,13 @@ export default function SuppliersPage() {
 
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter(supplier => {
-      const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            supplier.address.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = supplier.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                            supplier.address.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       const matchesCategory = categoryFilter === "All" || supplier.category === categoryFilter;
       const matchesItem = itemFilter === "All" || supplier.itemsSupplied.some(item => item.toLowerCase().includes(itemFilter.toLowerCase()));
       return matchesSearch && matchesCategory && matchesItem;
     });
-  }, [suppliers, searchTerm, categoryFilter, itemFilter]);
+  }, [suppliers, debouncedSearchTerm, categoryFilter, itemFilter]);
 
   function onSubmit(values: z.infer<typeof supplierSchema>) {
     const newSupplier: Supplier = {
@@ -190,8 +192,8 @@ export default function SuppliersPage() {
               <Input 
                 placeholder="Search by name or address..." 
                 className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTermInput}
+                onChange={(e) => setSearchTermInput(e.target.value)}
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>

@@ -14,8 +14,9 @@ import * as z from "zod";
 import { MapPin, PlusCircle, Search, Building } from "lucide-react";
 import type { Business } from "@/types";
 import Image from "next/image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react"; // Added useEffect
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/use-debounce"; // Import useDebounce
 
 // Mock data for businesses
 const mockBusinesses: Business[] = [
@@ -36,7 +37,8 @@ const categories = ["All", ...new Set(mockBusinesses.map(b => b.category))];
 
 export default function BusinessesPage() {
   const [businesses, setBusinesses] = useState<Business[]>(mockBusinesses);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTermInput, setSearchTermInput] = useState(""); // For direct input
+  const debouncedSearchTerm = useDebounce(searchTermInput, 500); // Debounced value for filtering
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [isAddBusinessDialogOpen, setIsAddBusinessDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -53,13 +55,13 @@ export default function BusinessesPage() {
 
   const filteredBusinesses = useMemo(() => {
     return businesses.filter(business => {
-      const matchesSearch = business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            business.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (business.description && business.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesSearch = business.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                            business.address.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                            (business.description && business.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
       const matchesCategory = categoryFilter === "All" || business.category === categoryFilter;
       return matchesSearch && matchesCategory;
     });
-  }, [businesses, searchTerm, categoryFilter]);
+  }, [businesses, debouncedSearchTerm, categoryFilter]);
 
   function onSubmit(values: z.infer<typeof businessSchema>) {
     const newBusiness: Business = {
@@ -169,8 +171,8 @@ export default function BusinessesPage() {
               <Input 
                 placeholder="Search by name, address, or description..." 
                 className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTermInput}
+                onChange={(e) => setSearchTermInput(e.target.value)}
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>

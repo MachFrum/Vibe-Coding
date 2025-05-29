@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -9,12 +10,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import React from "react"; // Import React for React.memo
 
 interface SidebarNavProps {
   items: NavItem[];
 }
 
-export function SidebarNav({ items }: SidebarNavProps) {
+function SidebarNavComponent({ items }: SidebarNavProps) {
   const pathname = usePathname();
 
   if (!items?.length) {
@@ -51,3 +53,5 @@ export function SidebarNav({ items }: SidebarNavProps) {
     </SidebarMenu>
   );
 }
+
+export const SidebarNav = React.memo(SidebarNavComponent);

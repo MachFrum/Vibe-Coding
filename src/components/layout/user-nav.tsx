@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from "react"; // Import React for React.memo
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,14 +13,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon, LogIn, UserPlus } from "lucide-react"; // Removed Settings icon
+import { LogOut, User as UserIcon, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { doSignOut } from "@/lib/firebase"; 
+import { doSignOut, auth } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
 
-export function UserNav() {
+function UserNavComponent() {
   const { toast } = useToast();
   const { currentUser, loading } = useAuth();
   const router = useRouter();
@@ -105,7 +106,6 @@ export function UserNav() {
               <span>View Profile</span>
             </Link>
           </DropdownMenuItem>
-          {/* Settings option removed */}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
@@ -116,3 +116,5 @@ export function UserNav() {
     </DropdownMenu>
   );
 }
+
+export const UserNav = React.memo(UserNavComponent);
