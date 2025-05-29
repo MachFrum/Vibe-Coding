@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Package, AlertTriangle, TrendingUp, TrendingDown, Users, ShoppingCart } from "lucide-react";
 import type { KeyMetric } from "@/types";
