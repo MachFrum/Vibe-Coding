@@ -12,11 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings, User as UserIcon, LogIn, UserPlus } from "lucide-react"; // Added UserIcon, LogIn, UserPlus
+import { LogOut, Settings, User as UserIcon, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
-import { mockSignOut } from "@/lib/firebase"; // Using mock
+import { useAuth } from "@/contexts/AuthContext";
+import { doSignOut } from "@/lib/firebase"; // Using real function
 import { useRouter } from "next/navigation";
 
 export function UserNav() {
@@ -24,33 +24,23 @@ export function UserNav() {
   const { currentUser, loading } = useAuth();
   const router = useRouter();
 
-  // Default user for display purposes if currentUser is not yet loaded or null
-  const displayUser = currentUser || {
-    name: "Guest",
-    email: "",
-    avatarUrl: "", // Or a default guest avatar
-  };
-
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
     if (!name) return "G"; // Guest initial
-    const initials = name
-      .split(" ")
-      .map((n) => n[0])
-      .join("");
-    return initials.toUpperCase();
+    const names = name.split(" ");
+    const initials = names.map((n) => n[0]).join("");
+    return initials.toUpperCase() || "U"; // Default to 'U' if name results in empty initials
   };
-
+  
   const handleLogout = async () => {
     try {
-      await mockSignOut(); // Replace with actual Firebase signOut
+      await doSignOut();
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      // AuthContext will update currentUser to null, triggering redirect in AppLayout
-      // Forcing a router push can sometimes be more reliable for immediate UI update.
-      router.push('/auth/signin');
+      router.push('/auth/signin'); // Ensure redirect after logout
     } catch (error) {
+      console.error("Logout error:", error);
       toast({
         variant: "destructive",
         title: "Logout Failed",
@@ -91,16 +81,16 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={currentUser.photoURL || displayUser.avatarUrl} alt={currentUser.displayName || displayUser.name} data-ai-hint="user avatar" />
-            <AvatarFallback>{getInitials(currentUser.displayName || displayUser.name)}</AvatarFallback>
+            <AvatarImage src={currentUser.photoURL || undefined} alt={currentUser.displayName || currentUser.email || "User"} data-ai-hint="user avatar" />
+            <AvatarFallback>{getInitials(currentUser.displayName || currentUser.email)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{currentUser.displayName || "User"}</p>
-            <p className="text-xs leading-none text-muted-foreground">
+            <p className="text-sm font-medium leading-none truncate">{currentUser.displayName || "User"}</p>
+            <p className="text-xs leading-none text-muted-foreground truncate">
               {currentUser.email}
             </p>
           </div>

@@ -7,16 +7,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label'; // Label is part of FormLabel
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { mockCreateUserWithEmailAndPassword } from '@/lib/firebase'; // Using mock
+import { doCreateUserWithEmailAndPassword } from '@/lib/firebase'; // Using real function
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import type { FirebaseError } from 'firebase/app';
+// import { updateProfile } from "firebase/auth"; // For setting displayName
 
 const signUpSchema = z.object({
+  // name: z.string().min(2, { message: 'Name must be at least 2 characters.'}).optional(), // Optional name field
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   confirmPassword: z.string(),
@@ -35,6 +38,7 @@ export default function SignUpPage() {
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
+      // name: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -44,22 +48,30 @@ export default function SignUpPage() {
   const onSubmit = async (data: SignUpFormValues) => {
     setIsLoading(true);
     try {
-      // Replace with actual Firebase createUserWithEmailAndPassword
-      const userCredential = await mockCreateUserWithEmailAndPassword(data.email, data.password);
-      if (userCredential) {
+      const userCredential = await doCreateUserWithEmailAndPassword(data.email, data.password);
+      if (userCredential && userCredential.user) {
+        // Optionally, update the user's profile with a display name if you collect it
+        // if (data.name) {
+        //   await updateProfile(userCredential.user, { displayName: data.name });
+        // }
         toast({
           title: 'Account Created',
           description: 'Your account has been successfully created. Please sign in.',
         });
-        // In a real app, you might automatically sign the user in
-        // or send a verification email. For now, redirect to sign-in.
         router.push('/auth/signin');
       }
     } catch (error) {
       let errorMessage = 'Failed to create account. Please try again.';
-       if (error instanceof Error) {
+       if (error && typeof error === 'object' && 'code' in error) {
+        const firebaseError = error as FirebaseError;
+        if (firebaseError.code === 'auth/email-already-in-use') {
+          errorMessage = 'This email address is already in use.';
+        } else {
+          errorMessage = firebaseError.message;
+        }
+      } else if (error instanceof Error) {
         errorMessage = error.message;
-      }
+       }
       toast({
         variant: 'destructive',
         title: 'Sign Up Failed',
@@ -80,6 +92,19 @@ export default function SignUpPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your Name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              /> */}
               <FormField
                 control={form.control}
                 name="email"

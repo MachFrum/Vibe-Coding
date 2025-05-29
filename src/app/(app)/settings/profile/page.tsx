@@ -8,23 +8,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Mail, Building, Info, UploadCloud, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { mockUploadProfileImage } from '@/lib/firebase'; // Using mock function
+import { uploadProfileImage } from '@/lib/firebase'; // Using real function
+// import { updateProfile } from "firebase/auth"; // If you want to update Auth user profile
 
 const getInitials = (name?: string | null) => {
-  if (!name) return "U"; // User
-  const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .join("");
-  return initials.toUpperCase();
+  if (!name) return "U";
+  const names = name.split(" ");
+  const initials = names.map((n) => n[0]).join("");
+  return initials.toUpperCase() || "U"; // Default to 'U' if name results in empty initials
 };
 
 export default function ProfilePage() {
-  const { businessName } = useBusiness(); 
+  const { businessName } = useBusiness();
   const { currentUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
@@ -58,15 +57,16 @@ export default function ProfilePage() {
     }
     setIsUploading(true);
     try {
-      // Replace with actual Firebase storage upload and user profile update
-      const downloadURL = await mockUploadProfileImage(currentUser.uid, profileImageFile);
-      // In a real app, you'd update the user's photoURL in Firebase Auth & Firestore
-      // For now, we can update the local state or context if you want immediate reflection.
-      // For simplicity, we'll just show a success toast.
-      // If you want to update currentUser in AuthContext, you'd need a function there.
-      // currentUser.photoURL = downloadURL; // This won't trigger re-render without context update
+      const downloadURL = await uploadProfileImage(currentUser.uid, profileImageFile);
+      // To update the user's photoURL in Firebase Auth:
+      // if (auth.currentUser) { // auth should be imported from @/lib/firebase
+      //   await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      // }
+      // For this prototype, we'll just update the preview and show a success toast.
+      // For the change to reflect immediately in UserNav, AuthContext would need to re-fetch or update the user.
       setProfileImagePreview(downloadURL); // Update preview with "uploaded" URL
-      toast({ title: "Profile Image Uploaded", description: "Your new profile image is set (mock)." });
+      toast({ title: "Profile Image Uploaded", description: "Your new profile image is set." });
+      // Consider calling a function in AuthContext to refresh currentUser if needed for immediate update in UserNav.
     } catch (error) {
       toast({ title: "Upload Failed", description: "Could not upload profile image.", variant: "destructive" });
       console.error("Profile image upload error:", error);
@@ -84,6 +84,8 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
+    // This page should be protected by the AppLayout, so this might not be strictly necessary
+    // but it's a good fallback.
     return <div className="text-center py-10">Please sign in to view your profile.</div>;
   }
 
@@ -98,28 +100,29 @@ export default function ProfilePage() {
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
           <div className="flex flex-col items-center gap-4">
             <Avatar className="h-24 w-24 md:h-32 md:w-32">
-              <AvatarImage src={profileImagePreview || currentUser.photoURL || "https://placehold.co/100x100.png"} alt={currentUser.displayName || "User"} data-ai-hint="user avatar large" />
-              <AvatarFallback>{getInitials(currentUser.displayName)}</AvatarFallback>
+              <AvatarImage src={profileImagePreview || currentUser.photoURL || "https://placehold.co/100x100.png"} alt={currentUser.displayName || currentUser.email || "User"} data-ai-hint="user avatar large" />
+              <AvatarFallback>{getInitials(currentUser.displayName || currentUser.email)}</AvatarFallback>
             </Avatar>
             <div className="grid w-full max-w-sm items-center gap-1.5">
               <Label htmlFor="profile-picture" className="text-sm">Change Profile Picture</Label>
               <div className="flex items-center gap-2">
                 <Input id="profile-picture" type="file" accept="image/*" onChange={handleProfileImageChange} className="text-xs"/>
               </div>
-               {profileImagePreview && !isUploading && (
+               {profileImageFile && ( // Show upload button only if a new file is selected
                 <Button onClick={handleProfileImageUpload} size="sm" className="mt-2 w-full" disabled={isUploading}>
-                  <UploadCloud className="mr-2 h-4 w-4" /> Upload New Picture
+                  {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                   {isUploading ? "Uploading..." : "Upload New Picture"}
                 </Button>
               )}
-              {isUploading && <Button size="sm" className="mt-2 w-full" disabled><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</Button>}
             </div>
           </div>
           <div className="space-y-2 text-center md:text-left">
             <h2 className="text-2xl font-semibold">{currentUser.displayName || "User"}</h2>
             <p className="text-muted-foreground">{currentUser.email}</p>
-            <Button variant="outline" size="sm" onClick={() => toast({ title: "Edit Profile", description: "Profile editing is simulated." })}>
+            {/* Add a button to edit profile details if needed, e.g., display name */}
+            {/* <Button variant="outline" size="sm" onClick={() => toast({ title: "Edit Profile", description: "Profile editing is simulated." })}>
               Edit Profile (Simulated)
-            </Button>
+            </Button> */}
           </div>
         </CardContent>
       </Card>
@@ -131,28 +134,28 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold">{businessName || "Your Business"}</h3>
+            <h3 className="text-lg font-semibold">{businessName || "Your Business Name (Set in Portfolio)"}</h3>
             <p className="text-sm text-muted-foreground mt-1">{mockBusinessDescription}</p>
           </div>
           <div className="space-y-3">
             <div>
               <p className="text-sm font-medium mb-1">Banner Image (from Portfolio):</p>
-              <Image 
-                src={mockBannerImageUrl} 
-                alt="Business Banner Placeholder" 
-                width={600} 
-                height={150} 
-                className="rounded-md object-cover aspect-[4/1]" 
+              <Image
+                src={mockBannerImageUrl}
+                alt="Business Banner Placeholder"
+                width={600}
+                height={150}
+                className="rounded-md object-cover aspect-[4/1]"
                 data-ai-hint="business banner preview"
               />
             </div>
             <div>
               <p className="text-sm font-medium mb-1">Profile/Logo Image (from Portfolio):</p>
-              <Image 
-                src={mockProfileImageUrl} 
-                alt="Business Profile Placeholder" 
-                width={150} 
-                height={150} 
+              <Image
+                src={mockProfileImageUrl}
+                alt="Business Profile Placeholder"
+                width={150}
+                height={150}
                 className="rounded-md object-cover aspect-square"
                 data-ai-hint="business logo preview"
               />
@@ -164,7 +167,7 @@ export default function ProfilePage() {
           </p>
         </CardContent>
       </Card>
-      
+
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Support</CardTitle>

@@ -7,15 +7,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label'; // Label is part of FormLabel
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { mockSignInWithEmailAndPassword, mockSignInWithGoogle } from '@/lib/firebase'; // Using mock
+import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '@/lib/firebase'; // Using real functions
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Chrome } from 'lucide-react'; // Added Chrome for Google icon
+import { Loader2, Chrome } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import type { FirebaseError } from 'firebase/app';
 
 const signInSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -41,20 +42,26 @@ export default function SignInPage() {
   const onSubmit = async (data: SignInFormValues) => {
     setIsLoading(true);
     try {
-      const userCredential = await mockSignInWithEmailAndPassword(data.email, data.password);
-      if (userCredential) {
+      const userCredential = await doSignInWithEmailAndPassword(data.email, data.password);
+      if (userCredential && userCredential.user) {
         toast({
           title: 'Signed In',
-          description: `Welcome back, ${userCredential.email}!`,
+          description: `Welcome back, ${userCredential.user.email}!`,
         });
         router.push('/dashboard');
       }
     } catch (error) {
       let errorMessage = 'Failed to sign in. Please check your credentials.';
-      if (error instanceof Error) {
-        errorMessage = error.message.includes("Invalid credentials (mock)") 
-          ? "Invalid email or password (mock)." 
-          : error.message;
+      if (error && typeof error === 'object' && 'code' in error) {
+        const firebaseError = error as FirebaseError;
+        // More specific error messages based on Firebase error codes
+        if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/invalid-credential') {
+          errorMessage = 'Invalid email or password.';
+        } else {
+          errorMessage = firebaseError.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
       toast({
         variant: 'destructive',
@@ -69,17 +76,24 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const userCredential = await mockSignInWithGoogle();
-      if (userCredential) {
+      const userCredential = await doSignInWithGoogle();
+      if (userCredential && userCredential.user) {
         toast({
           title: 'Signed In with Google',
-          description: `Welcome, ${userCredential.displayName || userCredential.email}!`,
+          description: `Welcome, ${userCredential.user.displayName || userCredential.user.email}!`,
         });
         router.push('/dashboard');
       }
     } catch (error) {
        let errorMessage = 'Failed to sign in with Google. Please try again.';
-       if (error instanceof Error) {
+       if (error && typeof error === 'object' && 'code' in error) {
+        const firebaseError = error as FirebaseError;
+        if (firebaseError.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'Sign-in popup closed before completion.';
+        } else {
+          errorMessage = firebaseError.message;
+        }
+      } else if (error instanceof Error) {
          errorMessage = error.message;
        }
       toast({
