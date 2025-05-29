@@ -42,29 +42,29 @@ const getHighContrastForeground = (backgroundHslString: string): string => {
 // Define the themes
 export const themes: Theme[] = [
   {
-    name: 'Party Vibe', // #FFE66D, #FF6B35, #F7931E
+    name: 'Party Vibe (Modern)', // #FAFAFA, #FF5722, #E91E63
     colors: {
-      '--background': '49 100% 71%', // Creamy Peach
-      '--foreground': getHighContrastForeground('49 100% 71%'),
-      '--card': '49 100% 75%', // Lighter peach
-      '--card-foreground': getHighContrastForeground('49 100% 75%'),
-      '--popover': '49 100% 75%',
-      '--popover-foreground': getHighContrastForeground('49 100% 75%'),
-      '--primary': '16 100% 53%', // Sunset Orange
-      '--primary-foreground': getHighContrastForeground('16 100% 53%'),
-      '--secondary': '16 100% 65%', // Lighter/related orange for ShadCN secondary
-      '--secondary-foreground': getHighContrastForeground('16 100% 65%'),
-      '--muted': '49 80% 80%', // Softer peach
-      '--muted-foreground': '49 50% 40%',
-      '--accent': '32 93% 54%', // Tropical Pink
-      '--accent-foreground': getHighContrastForeground('32 93% 54%'),
+      '--background': '0 0% 98%', // Clean White
+      '--foreground': getHighContrastForeground('0 0% 98%'),
+      '--card': '0 0% 100%', // Pure white card
+      '--card-foreground': getHighContrastForeground('0 0% 100%'),
+      '--popover': '0 0% 100%',
+      '--popover-foreground': getHighContrastForeground('0 0% 100%'),
+      '--primary': '16 100% 56%', // Modern Coral
+      '--primary-foreground': getHighContrastForeground('16 100% 56%'),
+      '--secondary': '16 100% 70%', // Lighter coral for ShadCN secondary
+      '--secondary-foreground': getHighContrastForeground('16 100% 70%'),
+      '--muted': '0 0% 94%', // Light gray for muted
+      '--muted-foreground': '0 0% 45.1%',
+      '--accent': '340 82% 52%', // Vibrant Pink for Accent
+      '--accent-foreground': getHighContrastForeground('340 82% 52%'),
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '49 100% 65%', // Border from background variant
-      '--input': '49 100% 65%',
-      '--ring': '16 100% 53%', // Primary
-      '--sidebar-background': '49 100% 68%',
-      '--sidebar-foreground': getHighContrastForeground('49 100% 68%'),
+      '--border': '0 0% 90%', // Light border derived from background
+      '--input': '0 0% 90%',
+      '--ring': '16 100% 56%', // Primary color for ring
+      '--sidebar-background': '0 0% 97%',
+      '--sidebar-foreground': getHighContrastForeground('0 0% 97%'),
     },
   },
   {
@@ -250,29 +250,29 @@ export const themes: Theme[] = [
     },
   },
   {
-    name: 'Sunset Glow', // #FFF3E0, #E65100, #FF9800
+    name: 'Sunset Glow (Modern)', // #F8F9FA, #D84315, #FF6B6B
     colors: {
-      '--background': '36 100% 94%', // Warm Cream
-      '--foreground': '19 100% 25%', // Dark orange text
-      '--card': '36 100% 97%', // Lighter cream
-      '--card-foreground': '19 100% 25%',
-      '--popover': '36 100% 97%',
-      '--popover-foreground': '19 100% 25%',
-      '--primary': '19 100% 45%', // Burnt Orange
-      '--primary-foreground': '0 0% 98%', // White text
-      '--secondary': '19 100% 55%', // Lighter Burnt Orange
-      '--secondary-foreground': '0 0% 98%',
-      '--muted': '36 80% 88%',
-      '--muted-foreground': '19 70% 35%',
-      '--accent': '36 100% 50%', // Amber Gold
-      '--accent-foreground': '19 100% 20%', // Darker orange text
+      '--background': '210 17% 98%', // Soft Gray White
+      '--foreground': getHighContrastForeground('210 17% 98%'),
+      '--card': '0 0% 100%', // Pure white card
+      '--card-foreground': getHighContrastForeground('0 0% 100%'),
+      '--popover': '0 0% 100%',
+      '--popover-foreground': getHighContrastForeground('0 0% 100%'),
+      '--primary': '14 80% 46%', // Refined Terracotta
+      '--primary-foreground': getHighContrastForeground('14 80% 46%'),
+      '--secondary': '14 80% 60%', // Lighter terracotta for ShadCN secondary
+      '--secondary-foreground': getHighContrastForeground('14 80% 60%'),
+      '--muted': '210 15% 94%', // Light gray for muted
+      '--muted-foreground': '210 10% 45%',
+      '--accent': '0 100% 71%', // Soft Salmon for Accent
+      '--accent-foreground': getHighContrastForeground('0 100% 71%'),
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '36 100% 85%',
-      '--input': '36 100% 85%',
-      '--ring': '19 100% 45%', // Primary
-      '--sidebar-background': '36 100% 92%',
-      '--sidebar-foreground': '19 100% 25%',
+      '--border': '210 15% 90%', // Light border derived from background
+      '--input': '210 15% 90%',
+      '--ring': '14 80% 46%', // Primary color for ring
+      '--sidebar-background': '210 17% 95%',
+      '--sidebar-foreground': getHighContrastForeground('210 17% 95%'),
     },
   },
 ];
