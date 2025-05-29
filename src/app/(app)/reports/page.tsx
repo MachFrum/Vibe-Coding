@@ -10,6 +10,8 @@ import { useState, useMemo } from "react";
 
 type TimePeriod = 'daily' | 'weekly' | 'monthly';
 
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 // Sales Data
 const monthlySalesData = [
   { period: 'Jan', sales: 4000, profit: 2400 },
@@ -24,8 +26,8 @@ const weeklySalesData = Array.from({ length: 8 }, (_, i) => ({
   sales: Math.floor(Math.random() * 1500) + 500,
   profit: Math.floor(Math.random() * 800) + 200,
 }));
-const dailySalesData = Array.from({ length: 7 }, (_, i) => ({
-  period: `Day ${i + 1}`,
+const dailySalesData = dayNames.map((day) => ({
+  period: day,
   sales: Math.floor(Math.random() * 300) + 100,
   profit: Math.floor(Math.random() * 150) + 50,
 }));
@@ -65,8 +67,8 @@ const weeklyInventoryTurnoverData = Array.from({ length: 8 }, (_, i) => ({
   period: `W${i + 1}`,
   turnoverRate: parseFloat((Math.random() * 2 + 1).toFixed(1)),
 }));
-const dailyInventoryTurnoverData = Array.from({ length: 7 }, (_, i) => ({
-  period: `Day ${i + 1}`,
+const dailyInventoryTurnoverData = dayNames.map((day) => ({
+  period: day,
   turnoverRate: parseFloat((Math.random() * 0.5 + 0.2).toFixed(1)),
 }));
 
@@ -93,7 +95,7 @@ export default function ReportsPage() {
   const formatTick = (value: any, timePeriod: TimePeriod) => {
     if (typeof value === 'string') {
       if (timePeriod === 'monthly' && value.length > 3) return value.slice(0,3);
-      return value;
+      return value; // For daily ('Sun') and weekly ('W1'), names are short enough
     }
     return value;
   }
@@ -243,4 +245,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-

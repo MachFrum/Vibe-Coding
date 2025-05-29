@@ -26,8 +26,9 @@ const weeklyFinancialData = Array.from({ length: 8 }, (_, i) => ({
   expenses: Math.floor(Math.random() * 500) + 200,
 }));
 
-const dailyFinancialData = Array.from({ length: 7 }, (_, i) => ({
-  period: `Day ${i + 1}`,
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dailyFinancialData = dayNames.map((day) => ({
+  period: day,
   revenue: Math.floor(Math.random() * 200) + 50,
   expenses: Math.floor(Math.random() * 100) + 20,
 }));
@@ -112,7 +113,7 @@ export default function DashboardPage() {
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
-                  tickFormatter={(value) => typeof value === 'string' ? (value.length > 3 && timePeriod === 'monthly' ? value.slice(0, 3) : value) : value}
+                  tickFormatter={(value) => typeof value === 'string' ? (timePeriod === 'monthly' && value.length > 3 ? value.slice(0, 3) : value) : value}
                 />
                 <YAxis />
                 <ChartTooltipContent />
