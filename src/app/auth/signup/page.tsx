@@ -7,25 +7,23 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import { Label } from '@/components/ui/label'; // Label is part of FormLabel
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { doCreateUserWithEmailAndPassword } from '@/lib/firebase'; // Using real function
+import { doCreateUserWithEmailAndPassword, updateProfile, auth } from '@/lib/firebase'; 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import type { FirebaseError } from 'firebase/app';
-// import { updateProfile } from "firebase/auth"; // For setting displayName
 
 const signUpSchema = z.object({
-  // name: z.string().min(2, { message: 'Name must be at least 2 characters.'}).optional(), // Optional name field
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.'}).optional(),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match.",
-  path: ["confirmPassword"], // path of error
+  path: ["confirmPassword"], 
 });
 
 type SignUpFormValues = z.infer<typeof signUpSchema>;
@@ -38,7 +36,7 @@ export default function SignUpPage() {
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
-      // name: '',
+      name: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -50,10 +48,9 @@ export default function SignUpPage() {
     try {
       const userCredential = await doCreateUserWithEmailAndPassword(data.email, data.password);
       if (userCredential && userCredential.user) {
-        // Optionally, update the user's profile with a display name if you collect it
-        // if (data.name) {
-        //   await updateProfile(userCredential.user, { displayName: data.name });
-        // }
+        if (data.name && auth.currentUser) { // Check auth.currentUser before updating profile
+          await updateProfile(auth.currentUser, { displayName: data.name });
+        }
         toast({
           title: 'Account Created',
           description: 'Your account has been successfully created. Please sign in.',
@@ -64,9 +61,13 @@ export default function SignUpPage() {
       let errorMessage = 'Failed to create account. Please try again.';
        if (error && typeof error === 'object' && 'code' in error) {
         const firebaseError = error as FirebaseError;
+        console.error("Firebase Sign Up Error:", firebaseError.code, firebaseError.message);
         if (firebaseError.code === 'auth/email-already-in-use') {
           errorMessage = 'This email address is already in use.';
-        } else {
+        } else if (firebaseError.code === 'auth/invalid-api-key' || firebaseError.code === 'auth/project-not-found' || firebaseError.code === 'auth/operation-not-allowed') {
+            errorMessage = 'Firebase configuration error. Please contact support or check your .env.local file and restart the server.';
+        }
+         else {
           errorMessage = firebaseError.message;
         }
       } else if (error instanceof Error) {
@@ -92,7 +93,7 @@ export default function SignUpPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* <FormField
+              <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
@@ -104,7 +105,7 @@ export default function SignUpPage() {
                     <FormMessage />
                   </FormItem>
                 )}
-              /> */}
+              />
               <FormField
                 control={form.control}
                 name="email"

@@ -7,20 +7,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import { Label } from '@/components/ui/label'; // Label is part of FormLabel
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '@/lib/firebase'; // Using real functions
+import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '@/lib/firebase'; 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Chrome } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import type { FirebaseError } from 'firebase/app';
 
 const signInSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(1, { message: 'Password is required.' }), // Min 1 to ensure it's not empty
 });
 
 type SignInFormValues = z.infer<typeof signInSchema>;
@@ -54,9 +52,11 @@ export default function SignInPage() {
       let errorMessage = 'Failed to sign in. Please check your credentials.';
       if (error && typeof error === 'object' && 'code' in error) {
         const firebaseError = error as FirebaseError;
-        // More specific error messages based on Firebase error codes
+        console.error("Firebase Sign In Error:", firebaseError.code, firebaseError.message);
         if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/invalid-credential') {
           errorMessage = 'Invalid email or password.';
+        } else if (firebaseError.code === 'auth/invalid-api-key' || firebaseError.code === 'auth/project-not-found' || firebaseError.code === 'auth/operation-not-allowed') {
+          errorMessage = 'Firebase configuration error. Please contact support or check your .env.local file and restart the server.';
         } else {
           errorMessage = firebaseError.message;
         }
@@ -88,9 +88,17 @@ export default function SignInPage() {
        let errorMessage = 'Failed to sign in with Google. Please try again.';
        if (error && typeof error === 'object' && 'code' in error) {
         const firebaseError = error as FirebaseError;
+        console.error("Google Sign In Error:", firebaseError.code, firebaseError.message);
         if (firebaseError.code === 'auth/popup-closed-by-user') {
-          errorMessage = 'Sign-in popup closed before completion.';
-        } else {
+          errorMessage = 'Google Sign-In popup was closed before completion. Please try again and ensure popups are allowed for this site.';
+        } else if (firebaseError.code === 'auth/popup-blocked') {
+            errorMessage = 'Google Sign-In popup was blocked by your browser. Please allow popups for this site and try again.';
+        } else if (firebaseError.code === 'auth/cancelled-popup-request') {
+            errorMessage = 'Multiple Google Sign-In popups were opened. Please try again.';
+        } else if (firebaseError.code === 'auth/invalid-api-key' || firebaseError.code === 'auth/project-not-found' || firebaseError.code === 'auth/operation-not-allowed') {
+            errorMessage = 'Firebase configuration error for Google Sign-In. Please contact support or check your .env.local file and restart the server.';
+        }
+         else {
           errorMessage = firebaseError.message;
         }
       } else if (error instanceof Error) {
@@ -100,6 +108,7 @@ export default function SignInPage() {
         variant: 'destructive',
         title: 'Google Sign In Failed',
         description: errorMessage,
+        duration: 7000, // Longer duration for this potentially more complex error
       });
     } finally {
       setIsGoogleLoading(false);
