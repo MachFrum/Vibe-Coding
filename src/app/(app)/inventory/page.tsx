@@ -14,7 +14,7 @@ import { PlusCircle, ImagePlus, Camera, Loader2 } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { InventoryTable } from "@/components/features/inventory/inventory-table";
 import { inventoryColumns } from "@/components/features/inventory/inventory-columns";
-import { useState, useRef, useEffect, type ChangeEvent, useCallback } from "react"; // Added useCallback
+import { useState, useRef, useEffect, type ChangeEvent, useCallback } from "react"; 
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -42,7 +42,7 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const { businessName } = useBusiness();
   const { currentUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(true); // Initialize to true
+  const [isLoading, setIsLoading] = useState(true); 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
@@ -65,14 +65,12 @@ export default function InventoryPage() {
   });
 
   const fetchInventory = useCallback(async () => {
-    // This function is now memoized by useCallback.
-    // currentUser and DUMMY_BUSINESS_ID are stable or included in deps.
     if (!currentUser || !DUMMY_BUSINESS_ID) {
       setInventory([]);
-      setIsLoading(false); // Ensure loading stops if prerequisites aren't met
+      setIsLoading(false); 
       return;
     }
-    // setIsLoading(true) will be handled by the useEffect or calling context
+    
     try {
       const items = await getInventoryItemsFromFirestore(DUMMY_BUSINESS_ID);
       setInventory(items);
@@ -85,18 +83,17 @@ export default function InventoryPage() {
         title: "Error",
         description: "Could not fetch inventory items.",
       });
-      setInventory([]); // Clear inventory on error
+      setInventory([]); 
     } finally {
-      setIsLoading(false); // Always stop loading
+      setIsLoading(false); 
     }
-  }, [currentUser, toast]); // DUMMY_BUSINESS_ID is stable, toast is stable from hook
+  }, [currentUser, toast]); 
 
   useEffect(() => {
     if (currentUser) {
-      setIsLoading(true); // Set loading true right before fetching
+      setIsLoading(true); 
       fetchInventory();
     } else {
-      // If there's no user (e.g., on initial load before auth state is known, or after logout)
       setInventory([]);
       setIsLoading(false);
     }
@@ -116,7 +113,7 @@ export default function InventoryPage() {
           videoElement.srcObject = streamObj;
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            // console.error('Error accessing camera:', error);
+            console.error('Error accessing camera:', error);
           }
           setHasCameraPermission(false);
           toast({
@@ -159,7 +156,7 @@ export default function InventoryPage() {
             null, 
             (error) => {
               if (process.env.NODE_ENV === 'development') {
-                // console.error("Image upload error:", error);
+                console.error("Image upload error:", error);
               }
               reject(error);
             }, 
@@ -172,7 +169,7 @@ export default function InventoryPage() {
 
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          // console.error("Error uploading item image:", error);
+          console.error("Error uploading item image:", error);
         }
         toast({ variant: "destructive", title: "Image Upload Failed", description: "Could not upload item image." });
         setIsSubmitting(false);
@@ -180,14 +177,24 @@ export default function InventoryPage() {
       }
     }
 
-    const itemDataToSave = {
+    const itemDataToSave: {
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      lowStockThreshold: number;
+      supplier?: string;
+      imageUrl?: string; // imageUrl is optional
+    } = {
       name: values.name,
       quantity: values.quantity,
       unitPrice: values.unitPrice,
       lowStockThreshold: values.lowStockThreshold,
       supplier: values.supplier,
-      imageUrl: imageUrl, 
     };
+
+    if (imageUrl) { // Only add imageUrl if it has a value
+      itemDataToSave.imageUrl = imageUrl;
+    }
 
     try {
       await addInventoryItemToFirestore(DUMMY_BUSINESS_ID, itemDataToSave);
@@ -201,10 +208,11 @@ export default function InventoryPage() {
           fileInputRef.current.value = "";
       }
       setIsAddItemDialogOpen(false);
+      setIsLoading(true); // Set loading before refetching
       fetchInventory(); 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        // console.error("Error saving item to Firestore:", error);
+        console.error("Error saving item to Firestore:", error);
       }
       toast({
         variant: "destructive",
