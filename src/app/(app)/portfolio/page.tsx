@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,8 +15,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save } from "lucide-react";
+import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell } from "lucide-react";
 import type { InventoryItem } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 // Mock inventory data for selection
 const mockInventoryForPortfolio: InventoryItem[] = [
@@ -29,6 +30,7 @@ const mockInventoryForPortfolio: InventoryItem[] = [
 const portfolioSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters."),
   businessDescription: z.string().min(10, "Description must be at least 10 characters.").max(500, "Description too long."),
+  businessLocation: z.string().optional(),
   bannerImage: z.any().optional(),
   profileImage: z.any().optional(),
   videoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
@@ -45,17 +47,28 @@ const portfolioSchema = z.object({
 });
 
 type PortfolioFormValues = z.infer<typeof portfolioSchema>;
+type MessageCategory = "buyers" | "suppliers" | "malitrack" | "finance";
 
 export default function PortfolioPage() {
   const { toast } = useToast();
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
+  const [activeMessageCategory, setActiveMessageCategory] = useState<MessageCategory | null>(null);
+
+  // Mock unread counts
+  const [unreadCounts, setUnreadCounts] = useState({
+    buyers: 3,
+    suppliers: 1,
+    malitrack: 0,
+    finance: 2,
+  });
 
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioSchema),
     defaultValues: {
       businessName: "My Awesome Business",
       businessDescription: "Selling the best widgets in town since 2023. High quality and great service guaranteed!",
+      businessLocation: "123 Market St, BizTown, BT 54321",
       videoUrl: "",
       featuredItems: [mockInventoryForPortfolio[0].id, mockInventoryForPortfolio[2].id],
       bestSellingItems: [mockInventoryForPortfolio[1].id],
@@ -93,6 +106,20 @@ export default function PortfolioPage() {
     });
   }
 
+  const handleWhatsAppClick = () => {
+    toast({ title: "WhatsApp Clicked", description: "Redirecting to WhatsApp (simulated)." });
+    // In a real app: window.open('whatsapp://send?phone=YOUR_PHONE_NUMBER', '_blank');
+  };
+
+  const handleChatCenterClick = () => {
+    toast({ title: "Chat Center Clicked", description: "Opening chat center (simulated)." });
+  };
+
+  const handleCategoryClick = (category: MessageCategory) => {
+    setActiveMessageCategory(category);
+    // Potentially mark messages as read or fetch messages for this category
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -107,7 +134,7 @@ export default function PortfolioPage() {
           <Card className="shadow-md">
             <CardHeader>
               <CardTitle className="flex items-center"><Palette className="mr-2 h-6 w-6 text-primary" /> Business Profile & Branding</CardTitle>
-              <CardDescription>Set your business name, description, banner, logo and promotional video.</CardDescription>
+              <CardDescription>Set your business name, description, location, banner, logo and promotional video.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <FormField
@@ -128,6 +155,17 @@ export default function PortfolioPage() {
                   <FormItem>
                     <FormLabel>Business Description</FormLabel>
                     <FormControl><Textarea placeholder="Tell customers about your business..." {...field} className="min-h-[120px]" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="businessLocation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center"><MapPin className="mr-2 h-4 w-4"/> Business Location</FormLabel>
+                    <FormControl><Input placeholder="E.g., 123 Main St, Anytown" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -176,6 +214,65 @@ export default function PortfolioPage() {
               />
             </CardContent>
           </Card>
+
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle className="flex items-center"><MessageSquare className="mr-2 h-6 w-6 text-primary" /> Business Communication</CardTitle>
+              <CardDescription>Manage your contacts and messages.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button onClick={handleWhatsAppClick} variant="outline" className="w-full sm:w-auto">
+                  <Phone className="mr-2 h-5 w-5" /> Connect WhatsApp
+                </Button>
+                <Button onClick={handleChatCenterClick} className="w-full sm:w-auto">
+                  <MessageSquare className="mr-2 h-5 w-5" /> Open Chat Center
+                </Button>
+              </div>
+
+              <div>
+                <Label className="text-base font-semibold mb-2 block">Message Center</Label>
+                <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b">
+                  {(Object.keys(unreadCounts) as MessageCategory[]).map((category) => {
+                    const categoryIcons: Record<MessageCategory, React.ElementType> = {
+                      buyers: Users,
+                      suppliers: Truck,
+                      malitrack: Bell,
+                      finance: DollarSign,
+                    };
+                    const Icon = categoryIcons[category];
+                    return (
+                      <Button
+                        key={category}
+                        variant={activeMessageCategory === category ? "default" : "outline"}
+                        onClick={() => handleCategoryClick(category)}
+                        className="relative capitalize"
+                      >
+                        <Icon className="mr-2 h-5 w-5" />
+                        {category}
+                        {unreadCounts[category] > 0 && (
+                          <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">
+                            {unreadCounts[category]}
+                          </Badge>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="p-4 border rounded-md min-h-[150px] bg-muted/30">
+                  {activeMessageCategory ? (
+                    <p className="text-muted-foreground">
+                      Displaying messages for <span className="font-semibold capitalize text-foreground">{activeMessageCategory}</span>. (Message display is simulated)
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">Select a category to view messages.</p>
+                  )}
+                  {/* Future: Map through actual messages for the active category here */}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
 
           <Card className="shadow-md">
             <CardHeader>
@@ -456,3 +553,4 @@ export default function PortfolioPage() {
   );
 }
 
+    
