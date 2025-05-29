@@ -3,7 +3,7 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { hexToHsl } from '@/lib/colorUtils'; // Import hexToHsl
+import { hexToHsl, hslStringToHex } from '@/lib/colorUtils'; 
 
 export interface ColorValues {
   '--background': string;
@@ -34,254 +34,268 @@ export interface Theme {
   colors: ColorValues;
 }
 
-// Helper function to determine foreground color based on background lightness
+export type SavedPalette = {
+  name: string;
+  colors: CustomColorOverrides;
+}
+
 const getHighContrastForeground = (backgroundHslString: string): string => {
   const parts = backgroundHslString.match(/(\d+)\s*(\d+)%\s*(\d+)%/);
-  if (!parts) return '0 0% 3.9%'; // Default to dark text
+  if (!parts) return '0 0% 3.9%'; 
   const lightness = parseFloat(parts[3]);
-  return lightness > 50 ? '0 0% 3.9%' : '0 0% 98%'; // dark text on light bg, light text on dark bg
+  return lightness > 50 ? '0 0% 3.9%' : '0 0% 98%'; 
 };
 
 const CUSTOM_COLOR_OVERRIDES_KEY = 'malitrack-custom-colors';
+const SAVED_PALETTES_KEY = 'malitrack-saved-palettes';
+
 
 export const themes: Theme[] = [
-  {
+   {
     name: 'Party Vibe (Modern)',
     colors: {
-      '--background': '0 0% 98%', // Clean White #FAFAFA
-      '--foreground': getHighContrastForeground('0 0% 98%'),
-      '--card': '0 0% 100%', 
-      '--card-foreground': getHighContrastForeground('0 0% 100%'),
-      '--popover': '0 0% 100%',
-      '--popover-foreground': getHighContrastForeground('0 0% 100%'),
-      '--primary': '14 100% 56%', // Modern Coral #FF5722
-      '--primary-foreground': getHighContrastForeground('14 100% 56%'),
-      '--secondary': '339 82% 70%', // Lighter Vibrant Pink for ShadCN secondary from #E91E63
-      '--secondary-foreground': getHighContrastForeground('339 82% 70%'),
-      '--muted': '0 0% 94%', 
-      '--muted-foreground': '0 0% 45.1%',
-      '--accent': '339 82% 52%', // Vibrant Pink #E91E63 for Accent
-      '--accent-foreground': getHighContrastForeground('339 82% 52%'),
+      '--background': hexToHsl('#FAFAFA')!, 
+      '--foreground': getHighContrastForeground(hexToHsl('#FAFAFA')!),
+      '--card': hexToHsl('#FFFFFF')!, 
+      '--card-foreground': getHighContrastForeground(hexToHsl('#FFFFFF')!),
+      '--popover': hexToHsl('#FFFFFF')!,
+      '--popover-foreground': getHighContrastForeground(hexToHsl('#FFFFFF')!),
+      '--primary': hexToHsl('#FF5722')!, 
+      '--primary-foreground': getHighContrastForeground(hexToHsl('#FF5722')!),
+      '--secondary': hexToHsl('#FCE4EC')!, // Lighter version of Pink for Shadcn secondary
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#FCE4EC')!),
+      '--muted': hexToHsl('#F5F5F5')!, 
+      '--muted-foreground': hexToHsl('#757575')!,
+      '--accent': hexToHsl('#E91E63')!, 
+      '--accent-foreground': getHighContrastForeground(hexToHsl('#E91E63')!),
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '0 0% 90%', 
-      '--input': '0 0% 90%',
-      '--ring': '14 100% 56%', 
-      '--sidebar-background': '0 0% 97%',
-      '--sidebar-foreground': getHighContrastForeground('0 0% 97%'),
+      '--border': hexToHsl('#EEEEEE')!, 
+      '--input': hexToHsl('#EEEEEE')!,
+      '--ring': hexToHsl('#FF5722')!, 
+      '--sidebar-background': hexToHsl('#F7F7F7')!,
+      '--sidebar-foreground': getHighContrastForeground(hexToHsl('#F7F7F7')!),
     },
   },
   {
     name: 'Creative UI', 
     colors: {
-      '--background': '0 0% 100%', // Pure White #FFFFFF
-      '--foreground': hexToHsl('#2D004F')!, // Dark Violet text derived from Primary #7209B7
-      '--card': '0 0% 98%',
+      '--background': hexToHsl('#FFFFFF')!, 
+      '--foreground': hexToHsl('#2D004F')!,
+      '--card': hexToHsl('#F8F9FA')!,
       '--card-foreground': hexToHsl('#2D004F')!,
-      '--popover': '0 0% 98%',
+      '--popover': hexToHsl('#F8F9FA')!,
       '--popover-foreground': hexToHsl('#2D004F')!,
-      '--primary': '283 89% 37%', // Electric Violet #7209B7
-      '--primary-foreground': '0 0% 100%', 
-      '--secondary': '283 89% 50%', 
-      '--secondary-foreground': '0 0% 100%',
-      '--muted': '0 0% 94%',
-      '--muted-foreground': '0 0% 45.1%',
-      '--accent': '159 100% 51%', // Cyber Lime #06FFA5
-      '--accent-foreground': '0 0% 3.9%', 
+      '--primary': hexToHsl('#7209B7')!, 
+      '--primary-foreground': hexToHsl('#FFFFFF')!, 
+      '--secondary': hexToHsl('#C3FCEB')!, // Lighter version of Cyber Lime
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#C3FCEB')!),
+      '--muted': hexToHsl('#F1F3F5')!,
+      '--muted-foreground': hexToHsl('#495057')!,
+      '--accent': hexToHsl('#06FFA5')!, 
+      '--accent-foreground': hexToHsl('#003321')!, 
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '0 0% 90%',
-      '--input': '0 0% 90%',
-      '--ring': '283 89% 37%', 
-      '--sidebar-background': '0 0% 97%',
+      '--border': hexToHsl('#E9ECEF')!,
+      '--input': hexToHsl('#E9ECEF')!,
+      '--ring': hexToHsl('#7209B7')!, 
+      '--sidebar-background': hexToHsl('#FAFBFC')!,
       '--sidebar-foreground': hexToHsl('#2D004F')!,
     },
   },
    {
-    name: 'Strong Grinder', // #8E8E93, #1C1C1E, #FF3B30
+    name: 'Strong Grinder', 
     colors: {
-      '--background': '240 1% 56%', // Steel Gray
-      '--foreground': '0 0% 98%', // White text
-      '--card': '240 1% 50%', // Darker gray
-      '--card-foreground': '0 0% 98%',
-      '--popover': '240 1% 50%',
-      '--popover-foreground': '0 0% 98%',
-      '--primary': '240 3% 11%', // Iron Black
-      '--primary-foreground': '0 0% 98%', // Light text on black
-      '--secondary': '3 100% 70%', // Lighter Fire Red for ShadCN secondary from #FF3B30
-      '--secondary-foreground': getHighContrastForeground(hexToHsl('#FF3B30')!),
-      '--muted': '240 1% 45%',
-      '--muted-foreground': '0 0% 80%',
-      '--accent': '3 100% 59%', // Fire Red
-      '--accent-foreground': '0 0% 98%', // White text on red
-      '--destructive': '0 84.2% 60.2%',
+      '--background': hexToHsl('#8E8E93')!, 
+      '--foreground': hexToHsl('#FFFFFF')!, 
+      '--card': hexToHsl('#A0A0A5')!, 
+      '--card-foreground': hexToHsl('#FFFFFF')!,
+      '--popover': hexToHsl('#A0A0A5')!,
+      '--popover-foreground': hexToHsl('#FFFFFF')!,
+      '--primary': hexToHsl('#1C1C1E')!, 
+      '--primary-foreground': hexToHsl('#FFFFFF')!, 
+      '--secondary': hexToHsl('#FFD6D3')!, // Lighter version of Fire Red
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#FFD6D3')!),
+      '--muted': hexToHsl('#7A7A7F')!,
+      '--muted-foreground': hexToHsl('#D0D0D0')!,
+      '--accent': hexToHsl('#FF3B30')!, 
+      '--accent-foreground': hexToHsl('#FFFFFF')!, 
+      '--destructive': '0 70% 55%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '240 1% 40%',
-      '--input': '240 1% 40%',
-      '--ring': '3 100% 59%', // Accent as ring for visibility
-      '--sidebar-background': '240 3% 15%', // Darker sidebar
-      '--sidebar-foreground': '0 0% 98%',
+      '--border': hexToHsl('#6C6C70')!,
+      '--input': hexToHsl('#6C6C70')!,
+      '--ring': hexToHsl('#FF3B30')!, 
+      '--sidebar-background': hexToHsl('#2C2C2E')!, 
+      '--sidebar-foreground': hexToHsl('#FFFFFF')!,
     },
   },
   {
-    name: 'Luxury', // #F8F8FF, #001F3F, #D4AF37
+    name: 'Luxury', 
     colors: {
-      '--background': '240 100% 99%', // Pearl White
-      '--foreground': '210 100% 12%', // Deep Navy text
-      '--card': '0 0% 100%', // White card
-      '--card-foreground': '210 100% 12%',
-      '--popover': '0 0% 100%',
-      '--popover-foreground': '210 100% 12%',
-      '--primary': '210 100% 12%', // Deep Navy
-      '--primary-foreground': '0 0% 98%', // White text on navy
-      '--secondary': '45 65% 65%', // Lighter Champagne Gold for ShadCN secondary from D4AF37
-      '--secondary-foreground': getHighContrastForeground(hexToHsl('#D4AF37')!),
-      '--muted': '240 60% 96%',
-      '--muted-foreground': '210 80% 30%',
-      '--accent': '45 65% 52%', // Champagne Gold
-      '--accent-foreground': '210 100% 12%', // Deep Navy text on Gold
+      '--background': hexToHsl('#F8F8FF')!, 
+      '--foreground': hexToHsl('#001F3F')!, 
+      '--card': hexToHsl('#FFFFFF')!, 
+      '--card-foreground': hexToHsl('#001F3F')!,
+      '--popover': hexToHsl('#FFFFFF')!,
+      '--popover-foreground': hexToHsl('#001F3F')!,
+      '--primary': hexToHsl('#001F3F')!, 
+      '--primary-foreground': hexToHsl('#FFFFFF')!, 
+      '--secondary': hexToHsl('#F0E2B6')!, // Lighter version of Champagne Gold
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#F0E2B6')!),
+      '--muted': hexToHsl('#E0E8F0')!,
+      '--muted-foreground': hexToHsl('#003366')!,
+      '--accent': hexToHsl('#D4AF37')!, 
+      '--accent-foreground': hexToHsl('#001F3F')!, 
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '45 30% 85%', // Light gold/beige border
-      '--input': '45 30% 85%',
-      '--ring': '45 65% 52%', // Accent
-      '--sidebar-background': '240 30% 95%',
-      '--sidebar-foreground': '210 100% 12%',
+      '--border': hexToHsl('#D0C0A0')!, 
+      '--input': hexToHsl('#D0C0A0')!,
+      '--ring': hexToHsl('#D4AF37')!, 
+      '--sidebar-background': hexToHsl('#F0F4F8')!,
+      '--sidebar-foreground': hexToHsl('#001F3F')!,
     },
   },
   {
-    name: 'Conqueror', // #E5E4E2, #007AFF, #FFD700
+    name: 'Conqueror', 
     colors: {
-      '--background': '40 6% 90%', // Platinum
-      '--foreground': '0 0% 3.9%', // Dark text
-      '--card': '40 6% 95%', // Lighter platinum
-      '--card-foreground': '0 0% 3.9%',
-      '--popover': '40 6% 95%',
-      '--popover-foreground': '0 0% 3.9%',
-      '--primary': '214 100% 50%', // Victory Blue
-      '--primary-foreground': '0 0% 100%', // White text on blue
-      '--secondary': '51 100% 65%', // Lighter Champion Gold for ShadCN secondary from #FFD700
-      '--secondary-foreground': getHighContrastForeground(hexToHsl('#FFD700')!),
-      '--muted': '40 5% 85%',
-      '--muted-foreground': '0 0% 30%',
-      '--accent': '51 100% 50%', // Champion Gold
-      '--accent-foreground': '0 0% 3.9%', // Dark text on gold
+      '--background': hexToHsl('#E5E4E2')!, 
+      '--foreground': hexToHsl('#1A1A1A')!, 
+      '--card': hexToHsl('#F0EFED')!, 
+      '--card-foreground': hexToHsl('#1A1A1A')!,
+      '--popover': hexToHsl('#F0EFED')!,
+      '--popover-foreground': hexToHsl('#1A1A1A')!,
+      '--primary': hexToHsl('#007AFF')!, 
+      '--primary-foreground': hexToHsl('#FFFFFF')!, 
+      '--secondary': hexToHsl('#FFEEC2')!, // Lighter version of Champion Gold
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#FFEEC2')!),
+      '--muted': hexToHsl('#DCDCDC')!,
+      '--muted-foreground': hexToHsl('#4D4D4D')!,
+      '--accent': hexToHsl('#FFD700')!, 
+      '--accent-foreground': hexToHsl('#332A00')!, 
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '40 6% 80%',
-      '--input': '40 6% 80%',
-      '--ring': '214 100% 50%', // Primary
-      '--sidebar-background': '40 6% 88%',
-      '--sidebar-foreground': '0 0% 3.9%',
+      '--border': hexToHsl('#C8C7C5')!,
+      '--input': hexToHsl('#C8C7C5')!,
+      '--ring': hexToHsl('#007AFF')!, 
+      '--sidebar-background': hexToHsl('#E0DFDD')!,
+      '--sidebar-foreground': hexToHsl('#1A1A1A')!,
     },
   },
   {
-    name: 'Dark Artistic', // #2D2D30, #B19CD9, #F6F1E8
+    name: 'Dark Artistic', 
     colors: {
-      '--background': '240 3% 18%', // Midnight Charcoal #2D2D30
-      '--foreground': '38 43% 94%', // Warm Ivory #F6F1E8 text
-      '--card': '240 3% 22%', 
-      '--card-foreground': '38 43% 94%',
-      '--popover': '240 3% 22%',
-      '--popover-foreground': '38 43% 94%',
-      '--primary': '276 42% 73%', // Soft Amethyst #B19CD9 (light primary on dark BG)
-      '--primary-foreground': '240 3% 10%', 
-      '--secondary': '38 43% 85%', // Lighter Warm Ivory for ShadCN secondary from #F6F1E8
-      '--secondary-foreground': getHighContrastForeground(hexToHsl('#F6F1E8')!),
-      '--muted': '240 3% 25%', 
-      '--muted-foreground': '240 10% 70%', 
-      '--accent': '38 43% 94%', // Warm Ivory #F6F1E8 (light accent)
-      '--accent-foreground': '240 3% 10%', 
+      '--background': hexToHsl('#2D2D30')!, 
+      '--foreground': hexToHsl('#F6F1E8')!, 
+      '--card': hexToHsl('#3A3A3D')!, 
+      '--card-foreground': hexToHsl('#F6F1E8')!,
+      '--popover': hexToHsl('#3A3A3D')!,
+      '--popover-foreground': hexToHsl('#F6F1E8')!,
+      '--primary': hexToHsl('#B19CD9')!, 
+      '--primary-foreground': hexToHsl('#1E1E20')!, 
+      '--secondary': hexToHsl('#E0D8F0')!, // Lighter Amethyst
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#E0D8F0')!),
+      '--muted': hexToHsl('#464649')!, 
+      '--muted-foreground': hexToHsl('#B0B0B3')!, 
+      '--accent': hexToHsl('#F6F1E8')!, 
+      '--accent-foreground': hexToHsl('#1E1E20')!, 
       '--destructive': '0 70% 50%', 
       '--destructive-foreground': '0 0% 98%',
-      '--border': '240 3% 28%', 
-      '--input': '240 3% 28%',
-      '--ring': '276 42% 73%', 
-      '--sidebar-background': '240 3% 15%', 
-      '--sidebar-foreground': '38 43% 94%',
+      '--border': hexToHsl('#505053')!, 
+      '--input': hexToHsl('#505053')!,
+      '--ring': hexToHsl('#B19CD9')!, 
+      '--sidebar-background': hexToHsl('#252528')!, 
+      '--sidebar-foreground': hexToHsl('#F6F1E8')!,
     },
   },
   {
-    name: 'Ocean Breeze', // #E0F7FA, #006064, #26C6DA
+    name: 'Ocean Breeze', 
     colors: {
-      '--background': '188 67% 93%', // Soft Aqua
-      '--foreground': '183 100% 15%', // Dark teal text
-      '--card': '188 67% 97%', // Lighter aqua
-      '--card-foreground': '183 100% 15%',
-      '--popover': '188 67% 97%',
-      '--popover-foreground': '183 100% 15%',
-      '--primary': '183 100% 20%', // Deep Teal
-      '--primary-foreground': '0 0% 98%', // White text
-      '--secondary': '187 69% 60%', // Lighter Bright Cyan for ShadCN secondary from #26C6DA
-      '--secondary-foreground': getHighContrastForeground(hexToHsl('#26C6DA')!),
-      '--muted': '188 50% 88%',
-      '--muted-foreground': '183 70% 30%',
-      '--accent': '187 69% 50%', // Bright Cyan
-      '--accent-foreground': '183 100% 10%', // Very dark text
+      '--background': hexToHsl('#E0F7FA')!, 
+      '--foreground': hexToHsl('#004D40')!, 
+      '--card': hexToHsl('#F0FCFD')!, 
+      '--card-foreground': hexToHsl('#004D40')!,
+      '--popover': hexToHsl('#F0FCFD')!,
+      '--popover-foreground': hexToHsl('#004D40')!,
+      '--primary': hexToHsl('#006064')!, 
+      '--primary-foreground': hexToHsl('#E0F7FA')!, 
+      '--secondary': hexToHsl('#A7F3FC')!, // Lighter Bright Cyan
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#A7F3FC')!),
+      '--muted': hexToHsl('#B2EBF2')!,
+      '--muted-foreground': hexToHsl('#00796B')!,
+      '--accent': hexToHsl('#26C6DA')!, 
+      '--accent-foreground': hexToHsl('#003C43')!, 
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '188 60% 85%',
-      '--input': '188 60% 85%',
-      '--ring': '183 100% 20%', // Primary
-      '--sidebar-background': '188 67% 90%',
-      '--sidebar-foreground': '183 100% 15%',
+      '--border': hexToHsl('#A0E0E6')!,
+      '--input': hexToHsl('#A0E0E6')!,
+      '--ring': hexToHsl('#006064')!, 
+      '--sidebar-background': hexToHsl('#D0F0F5')!,
+      '--sidebar-foreground': hexToHsl('#004D40')!,
     },
   },
   {
-    name: 'Forest Calm', // #F1F8E9, #2E7D32, #8BC34A
+    name: 'Forest Calm', 
     colors: {
-      '--background': '88 48% 95%', // Mint Cream
-      '--foreground': '123 47% 20%', // Dark green text
-      '--card': '88 48% 98%', // Lighter mint
-      '--card-foreground': '123 47% 20%',
-      '--popover': '88 48% 98%',
-      '--popover-foreground': '123 47% 20%',
-      '--primary': '123 47% 33%', // Forest Green
-      '--primary-foreground': '0 0% 98%', // White text
-      '--secondary': '88 53% 65%', // Lighter Fresh Lime for ShadCN secondary from #8BC34A
-      '--secondary-foreground': getHighContrastForeground(hexToHsl('#8BC34A')!),
-      '--muted': '88 30% 90%',
-      '--muted-foreground': '123 30% 35%',
-      '--accent': '88 53% 53%', // Fresh Lime
-      '--accent-foreground': '123 47% 15%', // Darker green text
+      '--background': hexToHsl('#F1F8E9')!, 
+      '--foreground': hexToHsl('#1B5E20')!, 
+      '--card': hexToHsl('#FBFCF7')!, 
+      '--card-foreground': hexToHsl('#1B5E20')!,
+      '--popover': hexToHsl('#FBFCF7')!,
+      '--popover-foreground': hexToHsl('#1B5E20')!,
+      '--primary': hexToHsl('#2E7D32')!, 
+      '--primary-foreground': hexToHsl('#F1F8E9')!, 
+      '--secondary': hexToHsl('#DCEDC8')!, // Lighter Fresh Lime
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#DCEDC8')!),
+      '--muted': hexToHsl('#E0F0D4')!,
+      '--muted-foreground': hexToHsl('#388E3C')!,
+      '--accent': hexToHsl('#8BC34A')!, 
+      '--accent-foreground': hexToHsl('#10350C')!, 
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '88 40% 88%',
-      '--input': '88 40% 88%',
-      '--ring': '123 47% 33%', // Primary
-      '--sidebar-background': '88 48% 92%',
-      '--sidebar-foreground': '123 47% 20%',
+      '--border': hexToHsl('#C5E1A5')!,
+      '--input': hexToHsl('#C5E1A5')!,
+      '--ring': hexToHsl('#2E7D32')!, 
+      '--sidebar-background': hexToHsl('#E8F3DD')!,
+      '--sidebar-foreground': hexToHsl('#1B5E20')!,
     },
   },
   {
     name: 'Sunset Glow (Modern)',
     colors: {
-      '--background': '210 17% 98%', // Soft Gray White #F8F9FA
-      '--foreground': getHighContrastForeground('210 17% 98%'),
-      '--card': '0 0% 100%', 
-      '--card-foreground': getHighContrastForeground('0 0% 100%'),
-      '--popover': '0 0% 100%',
-      '--popover-foreground': getHighContrastForeground('0 0% 100%'),
-      '--primary': '15 86% 46%', // Refined Terracotta #D84315
-      '--primary-foreground': getHighContrastForeground('15 86% 46%'),
-      '--secondary': '0 100% 80%', // Lighter Soft Salmon for ShadCN secondary from #FF6B6B
-      '--secondary-foreground': getHighContrastForeground('0 100% 80%'),
-      '--muted': '210 15% 94%', 
-      '--muted-foreground': '210 10% 45%',
-      '--accent': '0 100% 71%', // Soft Salmon #FF6B6B for Accent
-      '--accent-foreground': getHighContrastForeground('0 100% 71%'),
+      '--background': hexToHsl('#F8F9FA')!, 
+      '--foreground': getHighContrastForeground(hexToHsl('#F8F9FA')!),
+      '--card': hexToHsl('#FFFFFF')!, 
+      '--card-foreground': getHighContrastForeground(hexToHsl('#FFFFFF')!),
+      '--popover': hexToHsl('#FFFFFF')!,
+      '--popover-foreground': getHighContrastForeground(hexToHsl('#FFFFFF')!),
+      '--primary': hexToHsl('#D84315')!, 
+      '--primary-foreground': getHighContrastForeground(hexToHsl('#D84315')!),
+      '--secondary': hexToHsl('#FFCCBC')!, // Lighter Soft Salmon
+      '--secondary-foreground': getHighContrastForeground(hexToHsl('#FFCCBC')!),
+      '--muted': hexToHsl('#F1F3F5')!, 
+      '--muted-foreground': hexToHsl('#495057')!,
+      '--accent': hexToHsl('#FF6B6B')!, 
+      '--accent-foreground': getHighContrastForeground(hexToHsl('#FF6B6B')!),
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '210 15% 90%', 
-      '--input': '210 15% 90%',
-      '--ring': '15 86% 46%', 
-      '--sidebar-background': '210 17% 95%',
-      '--sidebar-foreground': getHighContrastForeground('210 17% 95%'),
+      '--border': hexToHsl('#DEE2E6')!, 
+      '--input': hexToHsl('#DEE2E6')!,
+      '--ring': hexToHsl('#D84315')!, 
+      '--sidebar-background': hexToHsl('#F1F3F5')!,
+      '--sidebar-foreground': getHighContrastForeground(hexToHsl('#F1F3F5')!),
     },
   },
 ];
 
-type CustomColorOverrides = Partial<Record<keyof ColorValues, string>>;
+export type CustomColorOverrides = Partial<Record<keyof ColorValues, string>>;
+const colorVarsToCustomize: Array<keyof ColorValues> = [
+  '--background',
+  '--foreground',
+  '--primary',
+  '--secondary', 
+  '--accent',
+];
+
 
 interface ThemeContextType {
   theme: Theme;
@@ -291,6 +305,12 @@ interface ThemeContextType {
   customColorOverrides: CustomColorOverrides;
   updateCustomColor: (variableName: keyof ColorValues, hslValue: string) => void;
   getEffectiveColor: (variableName: keyof ColorValues) => string;
+  savedPalettes: SavedPalette[];
+  saveCurrentCustomPalette: (name: string) => void;
+  applySavedPalette: (palette: SavedPalette) => void;
+  deleteSavedPalette: (paletteName: string) => void;
+  randomizeCurrentThemeColors: () => void;
+  resetCustomColorsToThemeDefaults: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -298,27 +318,32 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
   const [customColorOverrides, setCustomColorOverrides] = useState<CustomColorOverrides>({});
+  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
 
   const applyColors = useCallback((baseColors: ColorValues, overrides: CustomColorOverrides) => {
     const root = document.documentElement;
     const effectiveColors = { ...baseColors, ...overrides };
     Object.entries(effectiveColors).forEach(([variable, value]) => {
-      root.style.setProperty(variable, value);
+      if (value) { // Ensure value is not undefined
+         root.style.setProperty(variable, value);
+      }
     });
   }, []);
 
   useEffect(() => {
-    // Load stored theme
     const storedThemeName = localStorage.getItem('malitrack-theme');
     const initialThemeIndex = themes.findIndex(t => t.name === storedThemeName);
     const validInitialIndex = initialThemeIndex !== -1 ? initialThemeIndex : 0;
     setCurrentThemeIndex(validInitialIndex);
 
-    // Load custom color overrides
     const storedOverrides = localStorage.getItem(CUSTOM_COLOR_OVERRIDES_KEY);
     const initialOverrides = storedOverrides ? JSON.parse(storedOverrides) : {};
     setCustomColorOverrides(initialOverrides);
     
+    const storedSavedPalettes = localStorage.getItem(SAVED_PALETTES_KEY);
+    const initialSavedPalettes = storedSavedPalettes ? JSON.parse(storedSavedPalettes) : [];
+    setSavedPalettes(initialSavedPalettes);
+
     applyColors(themes[validInitialIndex].colors, initialOverrides);
   }, [applyColors]);
 
@@ -349,6 +374,85 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     return customColorOverrides[variableName] || themes[currentThemeIndex].colors[variableName];
   };
 
+  const saveCurrentCustomPalette = (name: string) => {
+    if (!name.trim()) return; // Do not save if name is empty
+    const newPalette: SavedPalette = { name, colors: { ...customColorOverrides } };
+    const updatedPalettes = [...savedPalettes.filter(p => p.name !== name), newPalette];
+    setSavedPalettes(updatedPalettes);
+    localStorage.setItem(SAVED_PALETTES_KEY, JSON.stringify(updatedPalettes));
+  };
+
+  const applySavedPalette = (paletteToApply: SavedPalette) => {
+    setCustomColorOverrides(paletteToApply.colors);
+    localStorage.setItem(CUSTOM_COLOR_OVERRIDES_KEY, JSON.stringify(paletteToApply.colors));
+    applyColors(themes[currentThemeIndex].colors, paletteToApply.colors);
+  };
+
+  const deleteSavedPalette = (paletteNameToDelete: string) => {
+    const updatedPalettes = savedPalettes.filter(p => p.name !== paletteNameToDelete);
+    setSavedPalettes(updatedPalettes);
+    localStorage.setItem(SAVED_PALETTES_KEY, JSON.stringify(updatedPalettes));
+  };
+
+  const generateRandomHsl = (minS = 30, maxS = 100, minL = 20, maxL = 80): string => {
+    const h = Math.floor(Math.random() * 360);
+    const s = Math.floor(Math.random() * (maxS - minS + 1)) + minS;
+    const l = Math.floor(Math.random() * (maxL - minL + 1)) + minL;
+    return `${h} ${s}% ${l}%`;
+  };
+  
+  const randomizeCurrentThemeColors = () => {
+    const newOverrides: CustomColorOverrides = {};
+    
+    // Randomize base colors
+    newOverrides['--background'] = generateRandomHsl(0, 50, 10, 95); // Wider range for background
+    newOverrides['--primary'] = generateRandomHsl();
+    newOverrides['--secondary'] = generateRandomHsl();
+    newOverrides['--accent'] = generateRandomHsl();
+
+    // Determine foreground based on new background for readability
+    newOverrides['--foreground'] = getHighContrastForeground(newOverrides['--background']!);
+    
+    // For other elements like card, popover, derive them or set to simple contrasting values
+    const cardBgIsLight = parseInt(newOverrides['--background']!.split(' ')[2], 10) > 50;
+    newOverrides['--card'] = cardBgIsLight ? generateRandomHsl(0, 30, 90, 100) : generateRandomHsl(0, 30, 5, 15); // whiteish or blackish
+    newOverrides['--card-foreground'] = getHighContrastForeground(newOverrides['--card']!);
+
+    newOverrides['--popover'] = newOverrides['--card'];
+    newOverrides['--popover-foreground'] = newOverrides['--card-foreground'];
+    
+    newOverrides['--primary-foreground'] = getHighContrastForeground(newOverrides['--primary']!);
+    newOverrides['--secondary-foreground'] = getHighContrastForeground(newOverrides['--secondary']!);
+    newOverrides['--accent-foreground'] = getHighContrastForeground(newOverrides['--accent']!);
+
+    newOverrides['--border'] = cardBgIsLight ? generateRandomHsl(0, 20, 80, 90) : generateRandomHsl(0, 20, 20, 30);
+    newOverrides['--input'] = newOverrides['--border'];
+    newOverrides['--ring'] = newOverrides['--primary']; // Ring usually matches primary
+
+    // Destructive colors often kept standard
+    newOverrides['--destructive'] = themes[currentThemeIndex].colors['--destructive'];
+    newOverrides['--destructive-foreground'] = themes[currentThemeIndex].colors['--destructive-foreground'];
+
+    // Muted colors
+    newOverrides['--muted'] = cardBgIsLight ? generateRandomHsl(0, 15, 85, 95) : generateRandomHsl(0, 15, 15, 25);
+    newOverrides['--muted-foreground'] = getHighContrastForeground(newOverrides['--muted']!);
+
+    // Sidebar (can be simpler: contrast with main background or use primary related colors)
+    newOverrides['--sidebar-background'] = cardBgIsLight ? generateRandomHsl(0, 30, 90, 98) : generateRandomHsl(0, 30, 8, 12);
+    newOverrides['--sidebar-foreground'] = getHighContrastForeground(newOverrides['--sidebar-background']!);
+
+
+    setCustomColorOverrides(newOverrides);
+    localStorage.setItem(CUSTOM_COLOR_OVERRIDES_KEY, JSON.stringify(newOverrides));
+    applyColors(themes[currentThemeIndex].colors, newOverrides);
+  };
+
+  const resetCustomColorsToThemeDefaults = () => {
+    setCustomColorOverrides({});
+    localStorage.removeItem(CUSTOM_COLOR_OVERRIDES_KEY);
+    applyColors(themes[currentThemeIndex].colors, {});
+  };
+
   return (
     <ThemeContext.Provider value={{ 
       theme: themes[currentThemeIndex], 
@@ -357,7 +461,13 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       themeIndex: currentThemeIndex,
       customColorOverrides,
       updateCustomColor,
-      getEffectiveColor
+      getEffectiveColor,
+      savedPalettes,
+      saveCurrentCustomPalette,
+      applySavedPalette,
+      deleteSavedPalette,
+      randomizeCurrentThemeColors,
+      resetCustomColorsToThemeDefaults
     }}>
       {children}
     </ThemeContext.Provider>

@@ -12,11 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings, User as UserIcon, LogIn, UserPlus } from "lucide-react";
+import { LogOut, User as UserIcon, LogIn, UserPlus } from "lucide-react"; // Removed Settings icon
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { doSignOut } from "@/lib/firebase"; // Using real function
+import { doSignOut } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
 
 export function UserNav() {
@@ -28,7 +28,7 @@ export function UserNav() {
     if (!name) return "G"; // Guest initial
     const names = name.split(" ");
     const initials = names.map((n) => n[0]).join("");
-    return initials.toUpperCase() || "U"; // Default to 'U' if name results in empty initials
+    return initials.toUpperCase() || "U"; 
   };
   
   const handleLogout = async () => {
@@ -38,9 +38,11 @@ export function UserNav() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      router.push('/auth/signin'); // Ensure redirect after logout
+      router.push('/auth/signin'); 
     } catch (error) {
-      console.error("Logout error:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Logout error:", error);
+      }
       toast({
         variant: "destructive",
         title: "Logout Failed",
@@ -103,12 +105,7 @@ export function UserNav() {
               <span>View Profile</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </Link>
-          </DropdownMenuItem>
+          {/* Settings option removed */}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
