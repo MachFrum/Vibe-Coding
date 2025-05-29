@@ -109,11 +109,25 @@ export default function PortfolioPage() {
     const storedVideoUrl = localStorage.getItem(PORTFOLIO_VIDEO_URL_KEY);
     if (storedVideoUrl) form.setValue("videoUrl", storedVideoUrl);
 
-    const storedBanner = localStorage.getItem(PORTFOLIO_BANNER_KEY);
-    if (storedBanner) setBannerPreview(storedBanner);
+    try {
+      const storedBanner = localStorage.getItem(PORTFOLIO_BANNER_KEY);
+      if (storedBanner) setBannerPreview(storedBanner);
+    } catch (e) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn("Could not load banner image from localStorage (likely due to size):", e);
+      }
+      localStorage.removeItem(PORTFOLIO_BANNER_KEY); // Clear if invalid/too large
+    }
 
-    const storedLogo = localStorage.getItem(PORTFOLIO_LOGO_KEY);
-    if (storedLogo) setProfilePreview(storedLogo);
+    try {
+      const storedLogo = localStorage.getItem(PORTFOLIO_LOGO_KEY);
+      if (storedLogo) setProfilePreview(storedLogo);
+    } catch (e) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn("Could not load logo image from localStorage (likely due to size):", e);
+      }
+      localStorage.removeItem(PORTFOLIO_LOGO_KEY); // Clear if invalid/too large
+    }
     
     const storedFeatured = localStorage.getItem(PORTFOLIO_FEATURED_ITEMS_KEY);
     if (storedFeatured) form.setValue("featuredItems", JSON.parse(storedFeatured));
@@ -155,13 +169,48 @@ export default function PortfolioPage() {
     if(data.businessLocation) localStorage.setItem(PORTFOLIO_LOCATION_KEY, data.businessLocation);
     if(data.videoUrl) localStorage.setItem(PORTFOLIO_VIDEO_URL_KEY, data.videoUrl);
 
-    // For banner and profile images, save their Data URI previews to localStorage
-    // In a real app, you would upload data.bannerImageFile/profileImageFile to Firebase Storage
-    // and save the returned URL. Here, we use the preview directly for simulation.
-    if (bannerPreview) localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerPreview);
-      else localStorage.removeItem(PORTFOLIO_BANNER_KEY);
-    if (profilePreview) localStorage.setItem(PORTFOLIO_LOGO_KEY, profilePreview);
-      else localStorage.removeItem(PORTFOLIO_LOGO_KEY);
+    // For banner and profile images, try to save their Data URI previews to localStorage
+    try {
+      if (bannerPreview) {
+        localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerPreview);
+      } else {
+        localStorage.removeItem(PORTFOLIO_BANNER_KEY);
+      }
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError') {
+        toast({
+          variant: "destructive",
+          title: "Banner Image Too Large",
+          description: "Could not save banner image preview locally due to its size. It will not persist across sessions.",
+          duration: 7000,
+        });
+      } else {
+         if (process.env.NODE_ENV === 'development') {
+            console.error("Error saving banner to localStorage:", e);
+         }
+      }
+    }
+
+    try {
+      if (profilePreview) {
+        localStorage.setItem(PORTFOLIO_LOGO_KEY, profilePreview);
+      } else {
+        localStorage.removeItem(PORTFOLIO_LOGO_KEY);
+      }
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError') {
+        toast({
+          variant: "destructive",
+          title: "Profile/Logo Image Too Large",
+          description: "Could not save profile/logo image preview locally due to its size. It will not persist across sessions.",
+          duration: 7000,
+        });
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+            console.error("Error saving profile/logo to localStorage:", e);
+        }
+      }
+    }
 
     if(data.featuredItems) localStorage.setItem(PORTFOLIO_FEATURED_ITEMS_KEY, JSON.stringify(data.featuredItems));
     if(data.bestSellingItems) localStorage.setItem(PORTFOLIO_BEST_SELLING_ITEMS_KEY, JSON.stringify(data.bestSellingItems));
@@ -171,7 +220,7 @@ export default function PortfolioPage() {
 
     toast({
       title: "Portfolio Updated",
-      description: "Your business portfolio has been saved successfully (locally).",
+      description: "Your business portfolio has been saved successfully (locally). Images may not persist if they are too large.",
     });
   }
 
