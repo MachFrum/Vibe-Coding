@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarIcon, ImagePlus, PlusCircle } from "lucide-react";
+import { CalendarIcon, ImagePlus, PlusCircle, Camera, Mic } from "lucide-react";
 import type { Transaction } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -94,7 +94,7 @@ export default function TransactionsPage() {
         <Card className="lg:col-span-2 shadow-md">
           <CardHeader>
             <CardTitle>New Transaction Details</CardTitle>
-            <CardDescription>Record a new sale or purchase. OCR and voice input are simulated.</CardDescription>
+            <CardDescription>Record a new sale or purchase.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -168,7 +168,12 @@ export default function TransactionsPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Description</FormLabel>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label="Use microphone for description">
+                            <Mic className="h-5 w-5" />
+                        </Button>
+                      </div>
                       <FormControl>
                         <Textarea placeholder="E.g., Sale of 10kg tomatoes, Purchase of new equipment" {...field} />
                       </FormControl>
@@ -246,8 +251,13 @@ export default function TransactionsPage() {
                     name="image"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Upload Receipt/Image (Optional)</FormLabel>
-                        <FormControl>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Upload Receipt/Image (Optional)</FormLabel>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label="Use camera to upload receipt">
+                                <Camera className="h-5 w-5" />
+                            </Button>
+                          </div>
+                          <FormControl>
                             <div className="flex items-center gap-4">
                             <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center px-4 py-2 border border-input bg-background rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground">
                                 <ImagePlus className="mr-2 h-4 w-4"/> Choose File
