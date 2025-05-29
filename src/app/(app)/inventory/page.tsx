@@ -73,7 +73,7 @@ export default function InventoryPage() {
           setHasCameraPermission(true);
           videoElement.srcObject = streamObj;
         } catch (error) {
-          console.error('Error accessing camera:', error);
+          // console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',

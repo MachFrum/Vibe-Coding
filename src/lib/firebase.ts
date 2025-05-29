@@ -30,8 +30,6 @@ const firebaseConfig = {
 
 // --- DEBUGGING LOG ---
 // Check your browser console to see if these values are being loaded correctly.
-// REMOVE THIS BEFORE PRODUCTION!
-console.log("Firebase Config Loaded by App:", firebaseConfig);
 if (!firebaseConfig.apiKey) {
   console.error("Firebase API Key is missing. Check your .env.local file and ensure the Next.js server was restarted.");
 }
@@ -46,11 +44,7 @@ if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
     // Log an error or throw if the API key is essential for initialization
     // and not found. This helps catch the issue early.
-    console.error(
-      "Firebase API Key is not available. Firebase SDK will not initialize. " +
-      "Please ensure NEXT_PUBLIC_FIREBASE_API_KEY is set in your .env.local file " +
-      "and that you have restarted your Next.js development server."
-    );
+    // console.error previously here is kept above for early dev feedback
     // Depending on how critical Firebase is at this point, you might throw an error
     // or allow the app to continue, knowing Firebase features will fail.
     // For now, we'll let it proceed and other parts of the app will fail if they try to use Firebase.
@@ -107,14 +101,12 @@ const uploadProfileImage = async (userId: string, file: File): Promise<string> =
   if (auth.currentUser) {
     try {
       await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      console.log("Firebase Auth user profile photoURL updated.");
     } catch (error) {
-      console.error("Error updating Firebase Auth user profile photoURL:", error);
-      // Optionally, inform the user, but the upload itself was successful.
+      // Error updating Firebase Auth user profile photoURL
+      // This might be handled by a more specific error message in the UI if critical
     }
   }
   
-  console.log("File uploaded to Firebase Storage, URL:", downloadURL);
   // In a real app, you'd likely trigger a Cloud Function here to write an activity log
   // and update the user's Firestore document with this URL.
   return downloadURL;

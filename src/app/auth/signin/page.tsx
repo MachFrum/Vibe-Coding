@@ -52,7 +52,6 @@ export default function SignInPage() {
       let errorMessage = 'Failed to sign in. Please check your credentials.';
       if (error && typeof error === 'object' && 'code' in error) {
         const firebaseError = error as FirebaseError;
-        console.error("Firebase Sign In Error:", firebaseError.code, firebaseError.message);
         if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/invalid-credential') {
           errorMessage = 'Invalid email or password.';
         } else if (firebaseError.code === 'auth/invalid-api-key' || firebaseError.code === 'auth/project-not-found' || firebaseError.code === 'auth/operation-not-allowed') {
@@ -88,7 +87,6 @@ export default function SignInPage() {
        let errorMessage = 'Failed to sign in with Google. Please try again.';
        if (error && typeof error === 'object' && 'code' in error) {
         const firebaseError = error as FirebaseError;
-        console.error("Google Sign In Error:", firebaseError.code, firebaseError.message);
         if (firebaseError.code === 'auth/popup-closed-by-user') {
           errorMessage = 'Google Sign-In popup was closed before completion. Please try again and ensure popups are allowed for this site.';
         } else if (firebaseError.code === 'auth/popup-blocked') {

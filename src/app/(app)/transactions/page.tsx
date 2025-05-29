@@ -70,7 +70,7 @@ export default function TransactionsPage() {
           setHasCameraPermission(true);
           videoElement.srcObject = streamObj;
         } catch (error) {
-          console.error('Error accessing camera:', error);
+          // console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',
@@ -95,7 +95,6 @@ export default function TransactionsPage() {
   }, [showCamera, toast]);
 
   function onSubmit(values: z.infer<typeof transactionSchema>) {
-    console.log(values);
     const newTransaction: Transaction = {
         id: `txn${transactions.length + 1}`,
         date: format(values.date, "yyyy-MM-dd"),
@@ -141,7 +140,6 @@ export default function TransactionsPage() {
       description: "Voice input is now active (simulated). Say 'Log a sale...' to begin.",
       duration: 5000,
     });
-    console.log("Microphone activated (simulated)");
   };
 
 

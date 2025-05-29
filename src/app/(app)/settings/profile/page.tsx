@@ -69,7 +69,7 @@ export default function ProfilePage() {
       // Consider calling a function in AuthContext to refresh currentUser if needed for immediate update in UserNav.
     } catch (error) {
       toast({ title: "Upload Failed", description: "Could not upload profile image.", variant: "destructive" });
-      console.error("Profile image upload error:", error);
+      // console.error("Profile image upload error:", error);
     } finally {
       setIsUploading(false);
     }
