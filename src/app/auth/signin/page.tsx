@@ -11,10 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { mockSignInWithEmailAndPassword } from '@/lib/firebase'; // Using mock
+import { mockSignInWithEmailAndPassword, mockSignInWithGoogle } from '@/lib/firebase'; // Using mock
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Chrome } from 'lucide-react'; // Added Chrome for Google icon
+import { Separator } from '@/components/ui/separator';
 
 const signInSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -27,6 +28,7 @@ export default function SignInPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const form = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
@@ -39,17 +41,13 @@ export default function SignInPage() {
   const onSubmit = async (data: SignInFormValues) => {
     setIsLoading(true);
     try {
-      // Replace with actual Firebase signInWithEmailAndPassword
       const userCredential = await mockSignInWithEmailAndPassword(data.email, data.password);
       if (userCredential) {
         toast({
           title: 'Signed In',
           description: `Welcome back, ${userCredential.email}!`,
         });
-        // Manually trigger a refresh or context update if not handled by onAuthStateChanged immediately
-        // For mock, we assume onAuthStateChanged will pick it up.
-        // For real Firebase, onAuthStateChanged handles this.
-        router.push('/dashboard'); // Redirect to dashboard or desired page
+        router.push('/dashboard');
       }
     } catch (error) {
       let errorMessage = 'Failed to sign in. Please check your credentials.';
@@ -68,14 +66,40 @@ export default function SignInPage() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const userCredential = await mockSignInWithGoogle();
+      if (userCredential) {
+        toast({
+          title: 'Signed In with Google',
+          description: `Welcome, ${userCredential.displayName || userCredential.email}!`,
+        });
+        router.push('/dashboard');
+      }
+    } catch (error) {
+       let errorMessage = 'Failed to sign in with Google. Please try again.';
+       if (error instanceof Error) {
+         errorMessage = error.message;
+       }
+      toast({
+        variant: 'destructive',
+        title: 'Google Sign In Failed',
+        description: errorMessage,
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">Sign In to MaliTrack</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardDescription>Enter your credentials or sign in with Google.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -104,12 +128,29 @@ export default function SignInPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Sign In
               </Button>
             </form>
           </Form>
+          
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading || isGoogleLoading}>
+            {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />}
+            Sign In with Google
+          </Button>
+
         </CardContent>
         <CardFooter className="flex flex-col items-center space-y-2">
           <p className="text-sm text-muted-foreground">
