@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 import { LayoutDashboard, Package, BookOpen, ArrowRightLeft, Users, Store, BarChart, Lightbulb, Settings, Briefcase } from 'lucide-react';
 
@@ -67,10 +68,10 @@ export const siteConfig: SiteConfig = {
       href: "/advice",
       icon: Lightbulb,
     },
-    // {
-    //   title: "Settings",
-    //   href: "/settings",
-    //   icon: Settings,
-    // },
+    {
+      title: "Settings",
+      href: "/settings",
+      icon: Settings,
+    },
   ],
 };

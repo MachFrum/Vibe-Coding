@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,8 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 export function UserNav() {
+  const { toast } = useToast();
   // Placeholder user data
   const user = {
     name: "Business Owner",
@@ -28,6 +31,14 @@ export function UserNav() {
       .map((n) => n[0])
       .join("");
     return initials.toUpperCase();
+  };
+
+  const handleLogout = () => {
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out (simulated).",
+    });
+    // In a real app, you'd redirect to a login page or clear session here.
   };
 
   return (
@@ -52,22 +63,22 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/settings/profile"> {/* Placeholder link */}
+            <Link href="/settings/profile">
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>View Profile</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/settings"> {/* Placeholder link */}
+            <Link href="/settings">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => alert("Logout clicked")}> {/* Placeholder action */}
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>Log Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
