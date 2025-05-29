@@ -116,3 +116,5 @@ MaliTrack is an evolving platform with exciting plans for the future:
 *   **Automated Workflows:** Using Cloud Functions for more backend automation, such as generating activity logs and data validation.
 
 We are committed to continuously improving MaliTrack and providing small businesses with the tools they need to succeed!
+
+To live test the app visit : https://studio--malitrack.us-central1.hosted.app/
