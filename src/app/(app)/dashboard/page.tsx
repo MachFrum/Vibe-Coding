@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
+import { ThemeSwitcherButton } from "@/components/layout/ThemeSwitcherButton";
 
 type TimePeriod = 'daily' | 'weekly' | 'monthly';
 
@@ -151,6 +152,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      <ThemeSwitcherButton />
     </div>
   );
 }
