@@ -13,10 +13,10 @@ const chartData = [
   { month: "Jun", revenue: 2140, expenses: 1100 },
 ];
 
-const chartConfig = {
+const chartConfig: ChartConfig = {
   revenue: { label: "Revenue", color: "hsl(var(--chart-1))" },
   expenses: { label: "Expenses", color: "hsl(var(--chart-2))" },
-} satisfies ChartConfig;
+};
 
 
 export default function DashboardPage() {
@@ -105,3 +105,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
