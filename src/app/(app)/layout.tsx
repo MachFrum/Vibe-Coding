@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Header } from "@/components/layout/header";
 import { UserNav } from "@/components/layout/user-nav";
-import { Mountain } from "lucide-react";
+import { Mountain, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
   SidebarProvider,
@@ -18,12 +18,35 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/contexts/ThemeContext"; 
-import { BusinessProvider } from "@/contexts/BusinessContext"; // Import BusinessProvider
+import { BusinessProvider } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useRouter, usePathname } from "next/navigation"; // Import useRouter and usePathname
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { currentUser, loading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (!loading && !currentUser && !pathname.startsWith('/auth')) {
+      // Only redirect if not already on an auth page and not the root (if public)
+      // For this app, (app) layout implies authenticated routes.
+      router.replace('/auth/signin');
+    }
+  }, [currentUser, loading, router, pathname]);
+
+  if (loading || (!currentUser && !pathname.startsWith('/auth'))) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading MaliTrack...</p>
+      </div>
+    );
+  }
+  
   return (
     <ThemeProvider>
-      <BusinessProvider> {/* Wrap with BusinessProvider */}
+      <BusinessProvider>
         <SidebarProvider defaultOpen={true}>
           <Sidebar collapsible="icon" variant="sidebar" side="left">
             <SidebarHeader className="p-4">
