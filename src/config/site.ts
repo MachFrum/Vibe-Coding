@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Package, BookOpen, ArrowRightLeft, Users, Store, BarChart, Lightbulb, Settings } from 'lucide-react';
+import { LayoutDashboard, Package, BookOpen, ArrowRightLeft, Users, Store, BarChart, Lightbulb, Settings, Briefcase } from 'lucide-react';
 
 export type NavItem = {
   title: string;
@@ -51,6 +51,11 @@ export const siteConfig: SiteConfig = {
       title: "Businesses",
       href: "/businesses",
       icon: Store,
+    },
+    {
+      title: "Your Portfolio",
+      href: "/portfolio",
+      icon: Briefcase,
     },
     {
       title: "Reports",
