@@ -12,8 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfileImage, auth } from '@/lib/firebase'; // Using real function
-import { updateProfile } from "firebase/auth"; 
+import { uploadProfileImage, auth } from '@/lib/firebase'; 
+// Removed: import { updateProfile } from "firebase/auth"; // uploadProfileImage now handles this
 
 const getInitials = (name?: string | null) => {
   if (!name) return "U";
@@ -24,8 +24,8 @@ const getInitials = (name?: string | null) => {
 
 // Keys for localStorage for portfolio items (as a fallback for this page)
 const PORTFOLIO_DESC_KEY = 'malitrack-portfolio-description';
-const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url';
-const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';
+const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url'; // Will now store Firebase URL
+const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';   // Will now store Firebase URL
 
 
 export default function ProfilePage() {
@@ -36,7 +36,6 @@ export default function ProfilePage() {
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(currentUser?.photoURL || null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Mock data for portfolio (will load from localStorage if available)
   const [mockBusinessDescription, setMockBusinessDescription] = useState("This is a placeholder description for your business. Update it on the 'Your Portfolio' page.");
   const [mockBannerImageUrl, setMockBannerImageUrl] = useState<string | null>("https://placehold.co/800x200.png");
   const [mockProfileImageUrl, setMockProfileImageUrl] = useState<string | null>("https://placehold.co/200x200.png");
@@ -49,6 +48,8 @@ export default function ProfilePage() {
     // Load portfolio data from localStorage for display on this page
     const storedDesc = localStorage.getItem(PORTFOLIO_DESC_KEY);
     if (storedDesc) setMockBusinessDescription(storedDesc);
+    
+    // These will now load Firebase Storage URLs if set from portfolio page
     const storedBanner = localStorage.getItem(PORTFOLIO_BANNER_KEY);
     if (storedBanner) setMockBannerImageUrl(storedBanner);
     const storedLogo = localStorage.getItem(PORTFOLIO_LOGO_KEY);
@@ -68,7 +69,7 @@ export default function ProfilePage() {
       reader.readAsDataURL(file);
     } else {
       setProfileImageFile(null);
-      setProfileImagePreview(currentUser?.photoURL || null); // Revert to current or null
+      setProfileImagePreview(currentUser?.photoURL || null); 
     }
   };
 
@@ -79,35 +80,21 @@ export default function ProfilePage() {
     }
     setIsUploading(true);
     try {
-      // The uploadProfileImage function already updates Firebase Auth user's photoURL
       const downloadURL = await uploadProfileImage(currentUser.uid, profileImageFile);
-      
-      // We also need to ensure the local state for preview reflects the new URL
-      // and that AuthContext's currentUser might get updated if other components rely on it.
-      // For now, setting local preview and showing toast.
-      setProfileImagePreview(downloadURL);
+      setProfileImagePreview(downloadURL); // Update preview with the actual cloud URL
       
       toast({ title: "Profile Image Uploaded", description: "Your new profile image is set." });
-      // To reflect the change immediately in UserNav, AuthContext might need a way to refresh currentUser.
-      // Or, we can update the photoURL on the currentUser object if the context allows it (it currently doesn't expose a setter).
-      // For simplicity, user might need to refresh or re-login for UserNav to pick up the change directly from a fresh auth state.
-      // However, the new image will be used on next load due to onAuthStateChanged.
-      if (auth.currentUser) {
-         // Manually update the current user object in the auth instance
-         // This might not immediately propagate to all useAuth() consumers
-         // unless AuthContext re-fetches or updates its internal state.
-         // The most reliable way is that onAuthStateChanged will pick this up on next reload.
-      }
-
+      // AuthContext's onAuthStateChanged should eventually pick up the new photoURL for currentUser
+      // or UserNav might need a refresh for immediate update from auth.currentUser if not deep watching.
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error("Profile image upload error:", error);
       }
-      toast({ title: "Upload Failed", description: "Could not upload profile image. Check console for details.", variant: "destructive" });
+      toast({ title: "Upload Failed", description: "Could not upload profile image.", variant: "destructive" });
       setProfileImagePreview(currentUser?.photoURL || null); // Revert preview on error
     } finally {
       setIsUploading(false);
-      setProfileImageFile(null); // Clear the selected file
+      setProfileImageFile(null); 
     }
   };
 
@@ -134,7 +121,7 @@ export default function ProfilePage() {
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
           <div className="flex flex-col items-center gap-4">
             <Avatar className="h-24 w-24 md:h-32 md:w-32">
-              <AvatarImage src={profileImagePreview || "https://placehold.co/128x128.png"} alt={currentUser.displayName || currentUser.email || "User"} data-ai-hint="user avatar large" />
+              <AvatarImage src={profileImagePreview || undefined} alt={currentUser.displayName || currentUser.email || "User"} data-ai-hint="user avatar large" />
               <AvatarFallback>{getInitials(currentUser.displayName || currentUser.email)}</AvatarFallback>
             </Avatar>
             <div className="grid w-full max-w-sm items-center gap-1.5">
@@ -153,10 +140,6 @@ export default function ProfilePage() {
           <div className="space-y-2 text-center md:text-left">
             <h2 className="text-2xl font-semibold">{currentUser.displayName || "User"}</h2>
             <p className="text-muted-foreground">{currentUser.email}</p>
-            {/* Add a button to edit profile details if needed, e.g., display name */}
-            {/* <Button variant="outline" size="sm" onClick={() => toast({ title: "Edit Profile", description: "Profile editing is simulated." })}>
-              Edit Profile (Simulated)
-            </Button> */}
           </div>
         </CardContent>
       </Card>
@@ -174,30 +157,54 @@ export default function ProfilePage() {
           <div className="space-y-3">
             <div>
               <p className="text-sm font-medium mb-1">Banner Image (from Portfolio):</p>
-              <Image
-                src={mockBannerImageUrl || "https://placehold.co/800x200.png"}
-                alt="Business Banner"
-                width={600}
-                height={150}
-                className="rounded-md object-cover aspect-[4/1]"
-                data-ai-hint="business banner preview"
-              />
+              {mockBannerImageUrl && mockBannerImageUrl !== "https://placehold.co/800x200.png" ? (
+                <Image
+                  src={mockBannerImageUrl}
+                  alt="Business Banner"
+                  width={600}
+                  height={150}
+                  className="rounded-md object-cover aspect-[4/1]"
+                  data-ai-hint="business banner preview"
+                  onError={() => setMockBannerImageUrl("https://placehold.co/800x200.png")} // Fallback if cloud URL fails
+                />
+              ) : (
+                <Image
+                  src={"https://placehold.co/800x200.png"}
+                  alt="Business Banner Placeholder"
+                  width={600}
+                  height={150}
+                  className="rounded-md object-cover aspect-[4/1]"
+                  data-ai-hint="business banner preview"
+                />
+              )}
             </div>
             <div>
               <p className="text-sm font-medium mb-1">Profile/Logo Image (from Portfolio):</p>
-              <Image
-                src={mockProfileImageUrl || "https://placehold.co/200x200.png"}
-                alt="Business Profile/Logo"
-                width={150}
-                height={150}
-                className="rounded-md object-cover aspect-square"
-                data-ai-hint="business logo preview"
-              />
+               {mockProfileImageUrl && mockProfileImageUrl !== "https://placehold.co/200x200.png" ? (
+                <Image
+                  src={mockProfileImageUrl}
+                  alt="Business Profile/Logo"
+                  width={150}
+                  height={150}
+                  className="rounded-md object-cover aspect-square"
+                  data-ai-hint="business logo preview"
+                  onError={() => setMockProfileImageUrl("https://placehold.co/200x200.png")} // Fallback
+                />
+              ) : (
+                 <Image
+                  src={"https://placehold.co/200x200.png"}
+                  alt="Business Profile/Logo Placeholder"
+                  width={150}
+                  height={150}
+                  className="rounded-md object-cover aspect-square"
+                  data-ai-hint="business logo preview"
+                />
+              )}
             </div>
           </div>
            <p className="text-xs text-muted-foreground flex items-center mt-3">
             <Info className="h-3 w-3 mr-1.5" />
-            To update these details, please visit the &quot;Your Portfolio&quot; page.
+            To update these details and images, please visit the &quot;Your Portfolio&quot; page.
           </p>
         </CardContent>
       </Card>

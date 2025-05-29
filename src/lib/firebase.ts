@@ -34,7 +34,7 @@ if (process.env.NODE_ENV === 'development') {
   console.log('Firebase Config Loaded by App:', firebaseConfig);
 }
 if (!firebaseConfig.apiKey) {
-  console.error("Firebase API Key is missing. Check your .env.local file and ensure the Next.js server was restarted.");
+  console.error("CRITICAL: Firebase API Key is missing. Check your .env.local file and ensure the Next.js server was restarted.");
 }
 // --- END DEBUGGING LOG ---
 
@@ -46,8 +46,6 @@ let storage: FirebaseStorage;
 if (!getApps().length) {
   if (!firebaseConfig.apiKey) {
     // Error is logged above.
-    // Depending on how critical Firebase is at this point, you might throw an error
-    // or allow the app to continue, knowing Firebase features will fail.
   }
   app = initializeApp(firebaseConfig);
 } else {
@@ -87,7 +85,7 @@ const onAuthStateChanged = (callback: (user: User | null) => void): (() => void)
 
 // Storage functions
 const uploadProfileImage = async (userId: string, file: File): Promise<string> => {
-  const fileRef = storageRef(storage, `users/${userId}/profile-${Date.now()}-${file.name}`); // Added timestamp and original name for uniqueness
+  const fileRef = storageRef(storage, `users/${userId}/profile-${Date.now()}-${file.name}`);
   await uploadBytes(fileRef, file, {
     customMetadata: {
       uploadedBy: userId,
@@ -97,7 +95,6 @@ const uploadProfileImage = async (userId: string, file: File): Promise<string> =
   });
   const downloadURL = await getDownloadURL(fileRef);
   
-  // Update the user's profile in Firebase Auth with the new photoURL
   if (auth.currentUser) {
     try {
       await updateProfile(auth.currentUser, { photoURL: downloadURL });
@@ -105,13 +102,26 @@ const uploadProfileImage = async (userId: string, file: File): Promise<string> =
       if (process.env.NODE_ENV === 'development') {
         console.error("Error updating Firebase Auth user profile photoURL:", error);
       }
-      // Error updating Firebase Auth user profile photoURL
-      // This might be handled by a more specific error message in the UI if critical
     }
   }
+  return downloadURL;
+};
+
+const uploadBusinessImage = async (userId: string, imageType: 'banner' | 'logo', file: File): Promise<string> => {
+  const fileName = `${imageType}-${Date.now()}-${file.name}`;
+  // Using userId in path as a stand-in for businessId for this prototype
+  const fileRef = storageRef(storage, `businesses/${userId}/${imageType}/${fileName}`);
   
-  // In a real app, you'd likely trigger a Cloud Function here to write an activity log
-  // and update the user's Firestore document with this URL.
+  await uploadBytes(fileRef, file, {
+    customMetadata: {
+      uploadedBy: userId,
+      entityType: "businessPortfolio",
+      imageType: imageType,
+      timestamp: new Date().toISOString(),
+    }
+  });
+  const downloadURL = await getDownloadURL(fileRef);
+  // In a real app, you'd save this downloadURL to a Firestore document for the business.
   return downloadURL;
 };
 
@@ -127,5 +137,6 @@ export {
   doSignOut,
   onAuthStateChanged,
   uploadProfileImage,
-  updateProfile // Export updateProfile if needed elsewhere, though often used internally here
+  uploadBusinessImage, // Export new function
+  updateProfile
 };

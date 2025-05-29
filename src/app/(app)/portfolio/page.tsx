@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, type ChangeEvent, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from "next/image";
@@ -15,10 +15,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell, ImagePlus } from "lucide-react";
+import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell, ImagePlus, Loader2 } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { uploadBusinessImage } from "@/lib/firebase";
 
 const mockInventoryForPortfolio: InventoryItem[] = [
   { id: "item-1", name: "Handcrafted Mug", quantity: 25, unitPrice: 15.99, lowStockThreshold: 5, supplier: "Artisan Goods Co." },
@@ -27,23 +29,22 @@ const mockInventoryForPortfolio: InventoryItem[] = [
   { id: "item-4", name: "Scented Soy Candle", quantity: 60, unitPrice: 18.00, lowStockThreshold: 15, supplier: "Home Fragrances" },
 ];
 
-// Keys for localStorage
+// Keys for localStorage (will store Firebase Storage URLs for banner/logo)
 const PORTFOLIO_DESC_KEY = 'malitrack-portfolio-description';
 const PORTFOLIO_LOCATION_KEY = 'malitrack-portfolio-location';
 const PORTFOLIO_VIDEO_URL_KEY = 'malitrack-portfolio-video-url';
-const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url';
-const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';
+const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url'; // Will store Firebase URL
+const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';   // Will store Firebase URL
 const PORTFOLIO_FEATURED_ITEMS_KEY = 'malitrack-portfolio-featured-items';
 const PORTFOLIO_BEST_SELLING_ITEMS_KEY = 'malitrack-portfolio-best-selling-items';
 const PORTFOLIO_SALE_ITEMS_KEY = 'malitrack-portfolio-sale-items';
-// Payment settings could also be stored similarly if not using a real backend
 
 const portfolioSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters."),
   businessDescription: z.string().min(10, "Description must be at least 10 characters.").max(500, "Description too long."),
   businessLocation: z.string().optional(),
-  bannerImageFile: z.any().optional(), // For file input
-  profileImageFile: z.any().optional(), // For file input
+  bannerImageFile: z.any().optional(),
+  profileImageFile: z.any().optional(),
   videoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   featuredItems: z.array(z.string()).optional(),
   bestSellingItems: z.array(z.string()).optional(),
@@ -63,11 +64,17 @@ type MessageCategory = "buyers" | "suppliers" | "malitrack" | "finance";
 export default function PortfolioPage() {
   const { toast } = useToast();
   const { businessName: contextBusinessName, setBusinessName: setContextBusinessName } = useBusiness();
+  const { currentUser } = useAuth();
   
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [profilePreview, setProfilePreview] = useState<string | null>(null);
-  const [activeMessageCategory, setActiveMessageCategory] = useState<MessageCategory | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
+  const [profilePreview, setProfilePreview] = useState<string | null>(null);
+  const [profileFile, setProfileFile] = useState<File | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  const [activeMessageCategory, setActiveMessageCategory] = useState<MessageCategory | null>(null);
   const [unreadCounts, setUnreadCounts] = useState({
     buyers: 3,
     suppliers: 1,
@@ -96,7 +103,6 @@ export default function PortfolioPage() {
   });
 
   useEffect(() => {
-    // Load data from localStorage on mount
     if (contextBusinessName) {
       form.setValue("businessName", contextBusinessName);
     }
@@ -109,25 +115,11 @@ export default function PortfolioPage() {
     const storedVideoUrl = localStorage.getItem(PORTFOLIO_VIDEO_URL_KEY);
     if (storedVideoUrl) form.setValue("videoUrl", storedVideoUrl);
 
-    try {
-      const storedBanner = localStorage.getItem(PORTFOLIO_BANNER_KEY);
-      if (storedBanner) setBannerPreview(storedBanner);
-    } catch (e) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn("Could not load banner image from localStorage (likely due to size):", e);
-      }
-      localStorage.removeItem(PORTFOLIO_BANNER_KEY); // Clear if invalid/too large
-    }
+    const storedBannerUrl = localStorage.getItem(PORTFOLIO_BANNER_KEY);
+    if (storedBannerUrl) setBannerPreview(storedBannerUrl);
 
-    try {
-      const storedLogo = localStorage.getItem(PORTFOLIO_LOGO_KEY);
-      if (storedLogo) setProfilePreview(storedLogo);
-    } catch (e) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn("Could not load logo image from localStorage (likely due to size):", e);
-      }
-      localStorage.removeItem(PORTFOLIO_LOGO_KEY); // Clear if invalid/too large
-    }
+    const storedLogoUrl = localStorage.getItem(PORTFOLIO_LOGO_KEY);
+    if (storedLogoUrl) setProfilePreview(storedLogoUrl);
     
     const storedFeatured = localStorage.getItem(PORTFOLIO_FEATURED_ITEMS_KEY);
     if (storedFeatured) form.setValue("featuredItems", JSON.parse(storedFeatured));
@@ -138,89 +130,93 @@ export default function PortfolioPage() {
     const storedSale = localStorage.getItem(PORTFOLIO_SALE_ITEMS_KEY);
     if (storedSale) form.setValue("saleItems", JSON.parse(storedSale));
 
-    // Could load payment settings from localStorage too
   }, [contextBusinessName, form]);
 
   const handleImageChange = (
     e: ChangeEvent<HTMLInputElement>,
     setImagePreviewFn: React.Dispatch<React.SetStateAction<string | null>>,
-    fieldName: "bannerImageFile" | "profileImageFile"
+    setImageFileFn: React.Dispatch<React.SetStateAction<File | null>>,
+    formFieldName: "bannerImageFile" | "profileImageFile"
   ) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFileFn(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreviewFn(reader.result as string); // This is a Data URI
-        form.setValue(fieldName, file); // Store the file object in form state
+        setImagePreviewFn(reader.result as string); // Show local preview immediately
       };
       reader.readAsDataURL(file);
+      form.setValue(formFieldName, file); // Store file object for upload
     } else {
-      setImagePreviewFn(null);
-      form.setValue(fieldName, null);
+      setImageFileFn(null);
+      // Revert to stored cloud URL if exists, or null
+      const storedKey = formFieldName === "bannerImageFile" ? PORTFOLIO_BANNER_KEY : PORTFOLIO_LOGO_KEY;
+      setImagePreviewFn(localStorage.getItem(storedKey));
+      form.setValue(formFieldName, null);
     }
   };
 
-  function onSubmit(data: PortfolioFormValues) {
-    // Save to localStorage
+  async function onSubmit(data: PortfolioFormValues) {
+    if (!currentUser) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to save changes." });
+      return;
+    }
+
+    let bannerUrlToSave = bannerPreview; // Keep current URL if no new file
+    let logoUrlToSave = profilePreview;   // Keep current URL if no new file
+
+    if (bannerFile) {
+      setIsUploadingBanner(true);
+      try {
+        bannerUrlToSave = await uploadBusinessImage(currentUser.uid, 'banner', bannerFile);
+        setBannerPreview(bannerUrlToSave); // Update preview with cloud URL
+        localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerUrlToSave);
+        setBannerFile(null); // Clear file after upload
+        form.setValue("bannerImageFile", null);
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') console.error("Banner upload error:", error);
+        toast({ variant: "destructive", title: "Banner Upload Failed", description: "Could not upload banner image." });
+        setIsUploadingBanner(false);
+        return; // Stop submission if upload fails
+      } finally {
+        setIsUploadingBanner(false);
+      }
+    }
+
+    if (profileFile) {
+      setIsUploadingLogo(true);
+      try {
+        logoUrlToSave = await uploadBusinessImage(currentUser.uid, 'logo', profileFile);
+        setProfilePreview(logoUrlToSave); // Update preview with cloud URL
+        localStorage.setItem(PORTFOLIO_LOGO_KEY, logoUrlToSave);
+        setProfileFile(null); // Clear file after upload
+        form.setValue("profileImageFile", null);
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') console.error("Logo upload error:", error);
+        toast({ variant: "destructive", title: "Logo Upload Failed", description: "Could not upload logo image." });
+        setIsUploadingLogo(false);
+        return; // Stop submission if upload fails
+      } finally {
+        setIsUploadingLogo(false);
+      }
+    }
+
+    // Save other textual data to localStorage
     if (data.businessName) {
-      setContextBusinessName(data.businessName); // Updates context and localStorage
+      setContextBusinessName(data.businessName);
     }
     localStorage.setItem(PORTFOLIO_DESC_KEY, data.businessDescription);
     if(data.businessLocation) localStorage.setItem(PORTFOLIO_LOCATION_KEY, data.businessLocation);
     if(data.videoUrl) localStorage.setItem(PORTFOLIO_VIDEO_URL_KEY, data.videoUrl);
-
-    // For banner and profile images, try to save their Data URI previews to localStorage
-    try {
-      if (bannerPreview) {
-        localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerPreview);
-      } else {
-        localStorage.removeItem(PORTFOLIO_BANNER_KEY);
-      }
-    } catch (e: any) {
-      if (e.name === 'QuotaExceededError') {
-        toast({
-          variant: "destructive",
-          title: "Banner Image Too Large",
-          description: "Could not save banner image preview locally due to its size. It will not persist across sessions.",
-          duration: 7000,
-        });
-      } else {
-         if (process.env.NODE_ENV === 'development') {
-            console.error("Error saving banner to localStorage:", e);
-         }
-      }
-    }
-
-    try {
-      if (profilePreview) {
-        localStorage.setItem(PORTFOLIO_LOGO_KEY, profilePreview);
-      } else {
-        localStorage.removeItem(PORTFOLIO_LOGO_KEY);
-      }
-    } catch (e: any) {
-      if (e.name === 'QuotaExceededError') {
-        toast({
-          variant: "destructive",
-          title: "Profile/Logo Image Too Large",
-          description: "Could not save profile/logo image preview locally due to its size. It will not persist across sessions.",
-          duration: 7000,
-        });
-      } else {
-        if (process.env.NODE_ENV === 'development') {
-            console.error("Error saving profile/logo to localStorage:", e);
-        }
-      }
-    }
-
     if(data.featuredItems) localStorage.setItem(PORTFOLIO_FEATURED_ITEMS_KEY, JSON.stringify(data.featuredItems));
     if(data.bestSellingItems) localStorage.setItem(PORTFOLIO_BEST_SELLING_ITEMS_KEY, JSON.stringify(data.bestSellingItems));
     if(data.saleItems) localStorage.setItem(PORTFOLIO_SALE_ITEMS_KEY, JSON.stringify(data.saleItems));
-
+    
     // Simulate saving payment settings if needed
 
     toast({
       title: "Portfolio Updated",
-      description: "Your business portfolio has been saved successfully (locally). Images may not persist if they are too large.",
+      description: "Your business portfolio has been saved. Images uploaded to cloud storage.",
     });
   }
 
@@ -240,7 +236,8 @@ export default function PortfolioPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Your Business Portfolio</h1>
-        <Button onClick={form.handleSubmit(onSubmit)}>
+        <Button onClick={form.handleSubmit(onSubmit)} disabled={isUploadingBanner || isUploadingLogo}>
+          {(isUploadingBanner || isUploadingLogo) && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
           <Save className="mr-2 h-5 w-5" /> Save Changes
         </Button>
       </div>
@@ -290,7 +287,7 @@ export default function PortfolioPage() {
                 <FormField
                   control={form.control}
                   name="bannerImageFile"
-                  render={() => ( // field is not directly used since we handle file via state
+                  render={() => (
                     <FormItem>
                       <FormLabel>Banner Image (e.g., for your shop front)</FormLabel>
                       <FormControl>
@@ -299,11 +296,13 @@ export default function PortfolioPage() {
                             id="bannerImageFile"
                             type="file" 
                             accept="image/*" 
-                            onChange={(e) => handleImageChange(e, setBannerPreview, "bannerImageFile")} 
+                            onChange={(e) => handleImageChange(e, setBannerPreview, setBannerFile, "bannerImageFile")} 
                             className="hidden"
+                            disabled={isUploadingBanner}
                           />
-                          <Button type="button" variant="outline" onClick={() => document.getElementById('bannerImageFile')?.click()}>
-                            <ImagePlus className="mr-2 h-4 w-4"/> Choose Banner
+                          <Button type="button" variant="outline" onClick={() => document.getElementById('bannerImageFile')?.click()} disabled={isUploadingBanner}>
+                            {isUploadingBanner ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ImagePlus className="mr-2 h-4 w-4"/>}
+                            {isUploadingBanner ? "Uploading..." : "Choose Banner"}
                           </Button>
                         </div>
                       </FormControl>
@@ -315,7 +314,7 @@ export default function PortfolioPage() {
                 <FormField
                   control={form.control}
                   name="profileImageFile"
-                  render={() => ( // field is not directly used
+                  render={() => ( 
                     <FormItem>
                       <FormLabel>Profile/Logo Image</FormLabel>
                        <FormControl>
@@ -324,11 +323,13 @@ export default function PortfolioPage() {
                             id="profileImageFile"
                             type="file" 
                             accept="image/*" 
-                            onChange={(e) => handleImageChange(e, setProfilePreview, "profileImageFile")} 
+                            onChange={(e) => handleImageChange(e, setProfilePreview, setProfileFile, "profileImageFile")} 
                             className="hidden"
+                            disabled={isUploadingLogo}
                           />
-                           <Button type="button" variant="outline" onClick={() => document.getElementById('profileImageFile')?.click()}>
-                            <ImagePlus className="mr-2 h-4 w-4"/> Choose Logo
+                           <Button type="button" variant="outline" onClick={() => document.getElementById('profileImageFile')?.click()} disabled={isUploadingLogo}>
+                            {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ImagePlus className="mr-2 h-4 w-4"/>}
+                            {isUploadingLogo ? "Uploading..." : "Choose Logo"}
                           </Button>
                         </div>
                       </FormControl>
@@ -681,7 +682,8 @@ export default function PortfolioPage() {
           </Card>
 
           <div className="flex justify-end pt-4">
-            <Button type="submit" size="lg">
+            <Button type="submit" size="lg" disabled={isUploadingBanner || isUploadingLogo}>
+              {(isUploadingBanner || isUploadingLogo) && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               <Save className="mr-2 h-5 w-5" /> Save All Portfolio Changes
             </Button>
           </div>
