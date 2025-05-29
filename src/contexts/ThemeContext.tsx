@@ -33,77 +33,57 @@ export interface Theme {
   colors: ColorValues;
 }
 
+// Helper function to determine foreground color based on background lightness
+const getHighContrastForeground = (backgroundHslString: string): string => {
+  const lightness = parseFloat(backgroundHslString.split(' ')[2].replace('%', ''));
+  return lightness > 50 ? '0 0% 3.9%' : '0 0% 98%'; // dark text on light bg, light text on dark bg
+};
+
 // Define the themes
 export const themes: Theme[] = [
   {
-    name: 'Default Earthy',
+    name: 'Party Vibe', // #FFE66D, #FF6B35, #F7931E
     colors: {
-      '--background': '150 11% 95%', // #F2F4F3
-      '--foreground': '0 0% 3.9%',
-      '--card': '0 0% 100%',
-      '--card-foreground': '0 0% 3.9%',
-      '--popover': '0 0% 100%',
-      '--popover-foreground': '0 0% 3.9%',
-      '--primary': '167 14% 55%', // #7A9D96
-      '--primary-foreground': '0 0% 3.9%',
-      '--secondary': '167 10% 90%',
-      '--secondary-foreground': '167 14% 25%',
-      '--muted': '210 20% 94%',
-      '--muted-foreground': '0 0% 45.1%',
-      '--accent': '35 26% 61%', // #B0926A
-      '--accent-foreground': '0 0% 3.9%',
-      '--destructive': '0 84.2% 60.2%',
-      '--destructive-foreground': '0 0% 98%',
-      '--border': '150 10% 88%',
-      '--input': '150 10% 88%',
-      '--ring': '167 14% 55%',
-      '--sidebar-background': '0 0% 100%',
-      '--sidebar-foreground': '0 0% 20%',
-    },
-  },
-  {
-    name: 'Party Vibe',
-    colors: {
-      '--background': '49 100% 71%', // #FFE66D (Creamy Peach/Yellow)
-      '--foreground': '0 0% 3.9%', // Dark text
-      '--card': '49 100% 75%', // Lighter version of bg
-      '--card-foreground': '0 0% 3.9%',
+      '--background': '49 100% 71%', // Creamy Peach
+      '--foreground': getHighContrastForeground('49 100% 71%'),
+      '--card': '49 100% 75%', // Lighter peach
+      '--card-foreground': getHighContrastForeground('49 100% 75%'),
       '--popover': '49 100% 75%',
-      '--popover-foreground': '0 0% 3.9%',
-      '--primary': '19 100% 60%', // #FF6B35 (Sunset Orange)
-      '--primary-foreground': '0 0% 100%', // White text
-      '--secondary': '32 93% 54%', // #F7931E (Tropical Pink/Orange)
-      '--secondary-foreground': '0 0% 100%', // White text
-      '--muted': '49 80% 80%', // Lighter, less saturated bg
-      '--muted-foreground': '0 0% 30%',
-      '--accent': '25 100% 65%', // Bright accent
-      '--accent-foreground': '0 0% 100%',
+      '--popover-foreground': getHighContrastForeground('49 100% 75%'),
+      '--primary': '16 100% 53%', // Sunset Orange
+      '--primary-foreground': getHighContrastForeground('16 100% 53%'),
+      '--secondary': '16 100% 65%', // Lighter/related orange for ShadCN secondary
+      '--secondary-foreground': getHighContrastForeground('16 100% 65%'),
+      '--muted': '49 80% 80%', // Softer peach
+      '--muted-foreground': '49 50% 40%',
+      '--accent': '32 93% 54%', // Tropical Pink
+      '--accent-foreground': getHighContrastForeground('32 93% 54%'),
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '49 100% 65%', // Darker bg for border
+      '--border': '49 100% 65%', // Border from background variant
       '--input': '49 100% 65%',
-      '--ring': '19 100% 60%', // Primary
+      '--ring': '16 100% 53%', // Primary
       '--sidebar-background': '49 100% 68%',
-      '--sidebar-foreground': '0 0% 3.9%',
+      '--sidebar-foreground': getHighContrastForeground('49 100% 68%'),
     },
   },
   {
-    name: 'Creative UI',
+    name: 'Creative UI', // #FFFFFF, #7209B7, #06FFA5
     colors: {
-      '--background': '0 0% 100%', // #FFFFFF (Pure White)
+      '--background': '0 0% 100%', // Pure White
       '--foreground': '283 50% 20%', // Dark violet text
       '--card': '0 0% 98%',
       '--card-foreground': '283 50% 20%',
       '--popover': '0 0% 98%',
       '--popover-foreground': '283 50% 20%',
-      '--primary': '283 89% 37%', // #7209B7 (Electric Violet)
-      '--primary-foreground': '0 0% 100%', // White text
-      '--secondary': '159 100% 51%', // #06FFA5 (Cyber Lime)
-      '--secondary-foreground': '0 0% 3.9%', // Dark text
+      '--primary': '283 89% 37%', // Electric Violet
+      '--primary-foreground': '0 0% 100%', // White text on violet
+      '--secondary': '283 89% 50%', // Lighter violet
+      '--secondary-foreground': '0 0% 100%',
       '--muted': '0 0% 94%',
       '--muted-foreground': '0 0% 45.1%',
-      '--accent': '159 100% 65%', // Lighter Cyber Lime
-      '--accent-foreground': '0 0% 3.9%',
+      '--accent': '159 100% 51%', // Cyber Lime
+      '--accent-foreground': '0 0% 3.9%', // Dark text on lime
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
       '--border': '0 0% 90%',
@@ -114,74 +94,74 @@ export const themes: Theme[] = [
     },
   },
   {
-    name: 'Strong Grinder',
+    name: 'Strong Grinder', // #8E8E93, #1C1C1E, #FF3B30
     colors: {
-      '--background': '240 1% 56%', // #8E8E93 (Steel Gray)
-      '--foreground': '0 0% 100%', // White text
-      '--card': '240 1% 50%', // Darker bg
-      '--card-foreground': '0 0% 100%',
+      '--background': '240 1% 56%', // Steel Gray
+      '--foreground': '0 0% 98%', // White text
+      '--card': '240 1% 50%', // Darker gray
+      '--card-foreground': '0 0% 98%',
       '--popover': '240 1% 50%',
-      '--popover-foreground': '0 0% 100%',
-      '--primary': '240 3% 11%', // #1C1C1E (Iron Black)
-      '--primary-foreground': '0 0% 98%', // Light text
-      '--secondary': '3 100% 59%', // #FF3B30 (Fire Red)
-      '--secondary-foreground': '0 0% 100%', // White text
+      '--popover-foreground': '0 0% 98%',
+      '--primary': '240 3% 11%', // Iron Black
+      '--primary-foreground': '0 0% 98%', // Light text on black
+      '--secondary': '240 3% 25%', // Darker gray for ShadCN secondary
+      '--secondary-foreground': '0 0% 98%',
       '--muted': '240 1% 45%',
-      '--muted-foreground': '0 0% 90%',
-      '--accent': '3 100% 59%', // Fire Red as accent
-      '--accent-foreground': '0 0% 100%',
+      '--muted-foreground': '0 0% 80%',
+      '--accent': '3 100% 59%', // Fire Red
+      '--accent-foreground': '0 0% 98%', // White text on red
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
       '--border': '240 1% 40%',
       '--input': '240 1% 40%',
-      '--ring': '3 100% 59%', // Secondary as ring for visibility
-      '--sidebar-background': '240 1% 45%',
-      '--sidebar-foreground': '0 0% 100%',
+      '--ring': '3 100% 59%', // Accent as ring for visibility
+      '--sidebar-background': '240 3% 15%', // Darker sidebar
+      '--sidebar-foreground': '0 0% 98%',
     },
   },
   {
-    name: 'Luxury',
+    name: 'Luxury', // #F8F8FF, #001F3F, #D4AF37
     colors: {
-      '--background': '240 100% 99%', // #F8F8FF (Pearl White)
-      '--foreground': '210 100% 12%', // #001F3F (Deep Navy)
-      '--card': '0 0% 100%',
+      '--background': '240 100% 99%', // Pearl White
+      '--foreground': '210 100% 12%', // Deep Navy text
+      '--card': '0 0% 100%', // White card
       '--card-foreground': '210 100% 12%',
       '--popover': '0 0% 100%',
       '--popover-foreground': '210 100% 12%',
-      '--primary': '45 65% 52%', // #D4AF37 (Champagne Gold)
-      '--primary-foreground': '210 100% 12%', // Deep Navy text on Gold
-      '--secondary': '210 100% 12%', // #001F3F (Deep Navy)
-      '--secondary-foreground': '0 0% 100%', // White text
+      '--primary': '210 100% 12%', // Deep Navy
+      '--primary-foreground': '0 0% 98%', // White text on navy
+      '--secondary': '210 100% 25%', // Lighter navy
+      '--secondary-foreground': '0 0% 98%',
       '--muted': '240 60% 96%',
       '--muted-foreground': '210 80% 30%',
-      '--accent': '45 65% 60%', // Lighter Gold
-      '--accent-foreground': '210 100% 12%',
+      '--accent': '45 65% 52%', // Champagne Gold
+      '--accent-foreground': '210 100% 12%', // Deep Navy text on Gold
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
       '--border': '45 30% 85%', // Light gold/beige border
       '--input': '45 30% 85%',
-      '--ring': '45 65% 52%', // Primary
+      '--ring': '45 65% 52%', // Accent
       '--sidebar-background': '240 30% 95%',
       '--sidebar-foreground': '210 100% 12%',
     },
   },
   {
-    name: 'Conqueror',
+    name: 'Conqueror', // #E5E4E2, #007AFF, #FFD700
     colors: {
-      '--background': '40 6% 90%', // #E5E4E2 (Platinum)
+      '--background': '40 6% 90%', // Platinum
       '--foreground': '0 0% 3.9%', // Dark text
       '--card': '40 6% 95%', // Lighter platinum
       '--card-foreground': '0 0% 3.9%',
       '--popover': '40 6% 95%',
       '--popover-foreground': '0 0% 3.9%',
-      '--primary': '214 100% 50%', // #007AFF (Victory Blue)
-      '--primary-foreground': '0 0% 100%', // White text
-      '--secondary': '51 100% 50%', // #FFD700 (Champion Gold)
-      '--secondary-foreground': '0 0% 3.9%', // Dark text
+      '--primary': '214 100% 50%', // Victory Blue
+      '--primary-foreground': '0 0% 100%', // White text on blue
+      '--secondary': '214 100% 65%', // Lighter blue
+      '--secondary-foreground': '0 0% 100%',
       '--muted': '40 5% 85%',
       '--muted-foreground': '0 0% 30%',
-      '--accent': '51 100% 60%', // Lighter Gold
-      '--accent-foreground': '0 0% 3.9%',
+      '--accent': '51 100% 50%', // Champion Gold
+      '--accent-foreground': '0 0% 3.9%', // Dark text on gold
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
       '--border': '40 6% 80%',
@@ -192,29 +172,107 @@ export const themes: Theme[] = [
     },
   },
   {
-    name: 'Dark Artistic',
+    name: 'Dark Artistic', // #2D2D30, #B19CD9, #F6F1E8
     colors: {
-      '--background': '38 43% 94%', // #F6F1E8 (Warm Ivory)
-      '--foreground': '240 3% 18%', // #2D2D30 (Midnight Charcoal)
-      '--card': '38 43% 98%', // Lighter ivory
-      '--card-foreground': '240 3% 18%',
-      '--popover': '38 43% 98%',
-      '--popover-foreground': '240 3% 18%',
-      '--primary': '240 3% 18%', // #2D2D30 (Midnight Charcoal)
-      '--primary-foreground': '0 0% 98%', // Light text
-      '--secondary': '276 42% 73%', // #B19CD9 (Soft Amethyst)
-      '--secondary-foreground': '0 0% 3.9%', // Dark text
-      '--muted': '38 30% 90%',
-      '--muted-foreground': '240 3% 30%',
-      '--accent': '276 42% 65%', // Slightly darker Amethyst
-      '--accent-foreground': '0 0% 3.9%',
+      '--background': '240 3% 18%', // Midnight Charcoal
+      '--foreground': '38 43% 94%', // Warm Ivory text
+      '--card': '240 3% 22%', // Slightly lighter charcoal
+      '--card-foreground': '38 43% 94%',
+      '--popover': '240 3% 22%',
+      '--popover-foreground': '38 43% 94%',
+      '--primary': '276 42% 73%', // Soft Amethyst (light primary on dark BG)
+      '--primary-foreground': '240 3% 10%', // Very dark text on light amethyst
+      '--secondary': '276 42% 60%', // Darker Amethyst for ShadCN secondary
+      '--secondary-foreground': '0 0% 98%',
+      '--muted': '240 3% 25%', // Darker muted
+      '--muted-foreground': '240 10% 70%', // Lighter muted text
+      '--accent': '38 43% 94%', // Warm Ivory (light accent)
+      '--accent-foreground': '240 3% 10%', // Dark text on light accent
+      '--destructive': '0 70% 50%', // Adjusted destructive for dark theme
+      '--destructive-foreground': '0 0% 98%',
+      '--border': '240 3% 28%', // Subtle border
+      '--input': '240 3% 28%',
+      '--ring': '276 42% 73%', // Primary
+      '--sidebar-background': '240 3% 15%', // Even darker sidebar
+      '--sidebar-foreground': '38 43% 94%',
+    },
+  },
+  {
+    name: 'Ocean Breeze', // #E0F7FA, #006064, #26C6DA
+    colors: {
+      '--background': '188 67% 93%', // Soft Aqua
+      '--foreground': '183 100% 15%', // Dark teal text
+      '--card': '188 67% 97%', // Lighter aqua
+      '--card-foreground': '183 100% 15%',
+      '--popover': '188 67% 97%',
+      '--popover-foreground': '183 100% 15%',
+      '--primary': '183 100% 20%', // Deep Teal
+      '--primary-foreground': '0 0% 98%', // White text
+      '--secondary': '183 100% 30%', // Lighter Deep Teal
+      '--secondary-foreground': '0 0% 98%',
+      '--muted': '188 50% 88%',
+      '--muted-foreground': '183 70% 30%',
+      '--accent': '187 69% 50%', // Bright Cyan
+      '--accent-foreground': '183 100% 10%', // Very dark text
       '--destructive': '0 84.2% 60.2%',
       '--destructive-foreground': '0 0% 98%',
-      '--border': '38 20% 85%',
-      '--input': '38 20% 85%',
-      '--ring': '276 42% 73%', // Secondary as ring
-      '--sidebar-background': '38 43% 92%',
-      '--sidebar-foreground': '240 3% 18%',
+      '--border': '188 60% 85%',
+      '--input': '188 60% 85%',
+      '--ring': '183 100% 20%', // Primary
+      '--sidebar-background': '188 67% 90%',
+      '--sidebar-foreground': '183 100% 15%',
+    },
+  },
+  {
+    name: 'Forest Calm', // #F1F8E9, #2E7D32, #8BC34A
+    colors: {
+      '--background': '88 48% 95%', // Mint Cream
+      '--foreground': '123 47% 20%', // Dark green text
+      '--card': '88 48% 98%', // Lighter mint
+      '--card-foreground': '123 47% 20%',
+      '--popover': '88 48% 98%',
+      '--popover-foreground': '123 47% 20%',
+      '--primary': '123 47% 33%', // Forest Green
+      '--primary-foreground': '0 0% 98%', // White text
+      '--secondary': '123 47% 45%', // Lighter Forest Green
+      '--secondary-foreground': '0 0% 98%',
+      '--muted': '88 30% 90%',
+      '--muted-foreground': '123 30% 35%',
+      '--accent': '88 53% 53%', // Fresh Lime
+      '--accent-foreground': '123 47% 15%', // Darker green text
+      '--destructive': '0 84.2% 60.2%',
+      '--destructive-foreground': '0 0% 98%',
+      '--border': '88 40% 88%',
+      '--input': '88 40% 88%',
+      '--ring': '123 47% 33%', // Primary
+      '--sidebar-background': '88 48% 92%',
+      '--sidebar-foreground': '123 47% 20%',
+    },
+  },
+  {
+    name: 'Sunset Glow', // #FFF3E0, #E65100, #FF9800
+    colors: {
+      '--background': '36 100% 94%', // Warm Cream
+      '--foreground': '19 100% 25%', // Dark orange text
+      '--card': '36 100% 97%', // Lighter cream
+      '--card-foreground': '19 100% 25%',
+      '--popover': '36 100% 97%',
+      '--popover-foreground': '19 100% 25%',
+      '--primary': '19 100% 45%', // Burnt Orange
+      '--primary-foreground': '0 0% 98%', // White text
+      '--secondary': '19 100% 55%', // Lighter Burnt Orange
+      '--secondary-foreground': '0 0% 98%',
+      '--muted': '36 80% 88%',
+      '--muted-foreground': '19 70% 35%',
+      '--accent': '36 100% 50%', // Amber Gold
+      '--accent-foreground': '19 100% 20%', // Darker orange text
+      '--destructive': '0 84.2% 60.2%',
+      '--destructive-foreground': '0 0% 98%',
+      '--border': '36 100% 85%',
+      '--input': '36 100% 85%',
+      '--ring': '19 100% 45%', // Primary
+      '--sidebar-background': '36 100% 92%',
+      '--sidebar-foreground': '19 100% 25%',
     },
   },
 ];
@@ -236,9 +294,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     Object.entries(theme.colors).forEach(([variable, value]) => {
       root.style.setProperty(variable, value);
     });
-    // For dark mode specific variables - this simple setup assumes themes handle their own light/dark
-    // If a theme is inherently dark, its '--foreground' etc. will be light.
-    // A more complex setup could toggle a .dark class and have separate dark variants in theme.colors
   }, []);
 
   useEffect(() => {
@@ -280,3 +335,4 @@ export const useTheme = () => {
   }
   return context;
 };
+

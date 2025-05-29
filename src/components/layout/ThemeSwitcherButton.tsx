@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Palette } from 'lucide-react';
+import { Mountain } from 'lucide-react'; // Changed from Palette to Mountain
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -22,7 +22,7 @@ export function ThemeSwitcherButton() {
             onClick={cycleTheme}
             aria-label="Switch Theme"
           >
-            <Palette className="h-7 w-7 text-primary" />
+            <Mountain className="h-7 w-7 text-primary" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="left">
@@ -32,3 +32,4 @@ export function ThemeSwitcherButton() {
     </TooltipProvider>
   );
 }
+
