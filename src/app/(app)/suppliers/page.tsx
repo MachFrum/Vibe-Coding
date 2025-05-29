@@ -1,13 +1,21 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { MapPin, PlusCircle, Search, Filter } from "lucide-react";
 import type { Supplier } from "@/types";
 import Image from "next/image";
 import { useState, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock data for suppliers
 const mockSuppliers: Supplier[] = [
@@ -17,31 +25,157 @@ const mockSuppliers: Supplier[] = [
   { id: "4", name: "Natural Scents", category: "Crafts & Goods", address: "101 Aroma Ln, Craftsville", latitude: 34.0522, longitude: -118.2437, itemsSupplied: ["Handmade Soap", "Candles"], contact: "support@naturalscents.com" },
 ];
 
+const supplierSchema = z.object({
+  name: z.string().min(1, "Supplier name is required."),
+  category: z.string().min(1, "Category is required."),
+  address: z.string().min(1, "Address is required."),
+  itemsSupplied: z.string().min(1, "Please list items supplied."), // Comma-separated
+  contact: z.string().email("Invalid email format.").optional().or(z.literal('')),
+});
+
 const categories = ["All", ...new Set(mockSuppliers.map(s => s.category))];
 const itemTypes = ["All", ...new Set(mockSuppliers.flatMap(s => s.itemsSupplied))];
 
 export default function SuppliersPage() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [itemFilter, setItemFilter] = useState("All");
+  const [isAddSupplierDialogOpen, setIsAddSupplierDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof supplierSchema>>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: "",
+      category: "",
+      address: "",
+      itemsSupplied: "",
+      contact: "",
+    },
+  });
 
   const filteredSuppliers = useMemo(() => {
-    return mockSuppliers.filter(supplier => {
+    return suppliers.filter(supplier => {
       const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             supplier.address.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = categoryFilter === "All" || supplier.category === categoryFilter;
-      const matchesItem = itemFilter === "All" || supplier.itemsSupplied.includes(itemFilter);
+      const matchesItem = itemFilter === "All" || supplier.itemsSupplied.some(item => item.toLowerCase().includes(itemFilter.toLowerCase()));
       return matchesSearch && matchesCategory && matchesItem;
     });
-  }, [searchTerm, categoryFilter, itemFilter]);
+  }, [suppliers, searchTerm, categoryFilter, itemFilter]);
+
+  function onSubmit(values: z.infer<typeof supplierSchema>) {
+    const newSupplier: Supplier = {
+      id: `supplier-${Date.now()}`,
+      name: values.name,
+      category: values.category,
+      address: values.address,
+      itemsSupplied: values.itemsSupplied.split(',').map(item => item.trim()).filter(item => item.length > 0),
+      contact: values.contact,
+      latitude: 34.0522, // Mock latitude
+      longitude: -118.2437, // Mock longitude
+    };
+    setSuppliers(prev => [newSupplier, ...prev]);
+    form.reset();
+    setIsAddSupplierDialogOpen(false);
+    toast({
+      title: "Supplier Added",
+      description: `${newSupplier.name} has been successfully added.`,
+    });
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Suppliers Directory</h1>
-        <Button>
-          <PlusCircle className="mr-2 h-5 w-5" /> Add New Supplier
-        </Button>
+        <Dialog open={isAddSupplierDialogOpen} onOpenChange={setIsAddSupplierDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Supplier
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Add New Supplier</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Supplier Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E.g., FarmFresh Co." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E.g., Produce, Baked Goods" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E.g., 123 Green Valley Rd, Farmville" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="itemsSupplied"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Items Supplied (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="E.g., Organic Apples, Vegetables, Bread" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="contact"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Email (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="E.g., info@farmfresh.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline" onClick={() => form.reset()}>Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit">Add Supplier</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card className="shadow-md">
@@ -73,7 +207,7 @@ export default function SuppliersPage() {
                 <SelectValue placeholder="Filter by item type" />
               </SelectTrigger>
               <SelectContent>
-                {itemTypes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                 {itemTypes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button variant="outline" className="w-full">
@@ -106,7 +240,7 @@ export default function SuppliersPage() {
               )}
             </div>
             <div className="lg:col-span-1">
-              <Card className="sticky top-20 shadow-md"> {/* Sticky map container */}
+              <Card className="sticky top-20 shadow-md">
                 <CardHeader>
                   <CardTitle>Supplier Locations</CardTitle>
                 </CardHeader>
