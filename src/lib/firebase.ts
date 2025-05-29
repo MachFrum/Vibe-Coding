@@ -53,11 +53,11 @@ export const mockSignInWithEmailAndPassword = async (email: string, pass: string
   console.log("Mock signInWithEmailAndPassword called with:", email, pass);
   await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
   if (email === "test@example.com" && pass === "password") {
-    return {
+    // Simulate successful sign-in for mockOnAuthStateChanged to pick up
+    const mockUser = {
       uid: "mock-user-uid",
       email: "test@example.com",
       displayName: "Test User",
-      // Add other required User properties with mock data
       emailVerified: true,
       isAnonymous: false,
       metadata: { creationTime: new Date().toISOString(), lastSignInTime: new Date().toISOString() },
@@ -69,9 +69,15 @@ export const mockSignInWithEmailAndPassword = async (email: string, pass: string
       getIdTokenResult: async () => ({ token: "mock-id-token", claims: {}, expirationTime: "", issuedAtTime: "", signInProvider: null, signInSecondFactor: null }),
       reload: async () => {},
       toJSON: () => ({}),
-      photoURL: null, // Will be updated by profile upload
+      photoURL: null,
       phoneNumber: null,
     } as MockUser;
+    // Simulate updating the auth state for mockOnAuthStateChanged
+    if (typeof window !== 'undefined') {
+        (window as any).__mockCurrentUser = mockUser;
+        (window as any).__triggerMockAuthStateChange(mockUser);
+    }
+    return mockUser;
   }
   throw new Error("Invalid credentials (mock)");
 };
@@ -103,28 +109,40 @@ export const mockCreateUserWithEmailAndPassword = async (email: string, pass: st
 export const mockSignOut = async (): Promise<void> => {
   console.log("Mock signOut called");
   await new Promise(resolve => setTimeout(resolve, 500));
+   // Simulate updating the auth state for mockOnAuthStateChanged
+   if (typeof window !== 'undefined') {
+    (window as any).__mockCurrentUser = null;
+    (window as any).__triggerMockAuthStateChange(null);
+  }
 };
+
+// Store the callback to be triggered by sign-in/sign-out
+if (typeof window !== 'undefined') {
+    (window as any).__mockAuthCallback = null;
+    (window as any).__triggerMockAuthStateChange = (user: MockUser | null) => {
+        if ((window as any).__mockAuthCallback) {
+            (window as any).__mockAuthCallback(user);
+        }
+    };
+}
 
 export const mockOnAuthStateChanged = (callback: (user: MockUser | null) => void): (() => void) => {
   console.log("Mock onAuthStateChanged listener attached");
-  // Simulate an initial state (e.g., no user logged in)
-  // setTimeout(() => callback(null), 100); 
-  // To test with a logged-in user by default (for faster prototyping of authenticated views):
-  /*
-  setTimeout(() => callback({
-    uid: "mock-user-uid-default",
-    email: "default@example.com",
-    displayName: "Default User",
-    emailVerified: true, isAnonymous: false, metadata: {}, providerData: [],
-    providerId: "password", tenantId: null, delete: async () => {}, getIdToken: async () => "token",
-    getIdTokenResult: async () => ({} as any), reload: async () => {}, toJSON: () => ({}),
-    photoURL: null, phoneNumber: null,
-  } as MockUser), 100);
-  */
+  if (typeof window !== 'undefined') {
+    (window as any).__mockAuthCallback = callback;
+    // Simulate an initial state (e.g., no user logged in, or previously signed-in user)
+    setTimeout(() => callback((window as any).__mockCurrentUser || null), 100);
+  } else {
+    // For server-side or initial non-browser context, assume no user
+    setTimeout(() => callback(null), 100);
+  }
   
   // Return an unsubscribe function
   return () => {
     console.log("Mock onAuthStateChanged listener detached");
+    if (typeof window !== 'undefined') {
+        (window as any).__mockAuthCallback = null;
+    }
   };
 };
 
@@ -146,3 +164,4 @@ export const mockUploadProfileImage = async (userId: string, file: File): Promis
 // export const auth = {}; // Replace with getAuth(app)
 // export const db = {}; // Replace with getFirestore(app)
 // export const storage = {}; // Replace with getStorage(app)
+

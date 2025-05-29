@@ -6,7 +6,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 // When you implement real Firebase, you'll import User from "firebase/auth"
 // import type { User } from 'firebase/auth';
 import { mockOnAuthStateChanged, type MockUser as User } from '@/lib/firebase'; // Using MockUser as User for now
-import { usePathname, useRouter } from 'next/navigation';
+// Removed useRouter and usePathname as they are not needed here
 
 interface AuthContextType {
   currentUser: User | null;
@@ -19,8 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
+  // Removed router and pathname states as they are not managed by this context
 
   useEffect(() => {
     // In a real app, this would be auth.onAuthStateChanged from Firebase SDK
@@ -33,14 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!loading && !currentUser && !pathname.startsWith('/auth')) {
-      if (pathname !== '/') { // Allow access to home page if it's public
-         // router.push('/auth/signin'); // Protect non-auth routes
-      }
-    }
-  }, [currentUser, loading, router, pathname]);
-
+  // Removed the useEffect hook that was handling routing logic.
+  // Routing and route protection should be handled by layouts or pages.
 
   const value = {
     currentUser,
