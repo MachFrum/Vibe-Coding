@@ -1,3 +1,6 @@
+
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
@@ -31,4 +34,7 @@ export default function InventoryPage() {
         <CardContent>
           <InventoryTable columns={inventoryColumns} data={mockInventory} />
         </CardContent>
-      </Card
+      </Card>
+    </div>
+  );
+}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -135,4 +136,9 @@ export function InventoryTable<TData, TValue>({
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
-          
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
