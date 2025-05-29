@@ -72,7 +72,7 @@ This project is a comprehensive prototype. To run it locally:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://your-repository-url/MaliTrack.git
+    git clone https://github.com/MachFrum/Vibe-coding-hackathon.git
     cd MaliTrack
     ```
 2.  **Install dependencies:**
