@@ -15,12 +15,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell, ImagePlus, Loader2 } from "lucide-react";
+import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell, ImagePlus, Loader2, X } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadBusinessImage } from "@/lib/firebase";
+import { Progress } from "@/components/ui/progress";
 
 const mockInventoryForPortfolio: InventoryItem[] = [
   { id: "item-1", name: "Handcrafted Mug", quantity: 25, unitPrice: 15.99, lowStockThreshold: 5, supplier: "Artisan Goods Co." },
@@ -29,12 +30,11 @@ const mockInventoryForPortfolio: InventoryItem[] = [
   { id: "item-4", name: "Scented Soy Candle", quantity: 60, unitPrice: 18.00, lowStockThreshold: 15, supplier: "Home Fragrances" },
 ];
 
-// Keys for localStorage (will store Firebase Storage URLs for banner/logo)
 const PORTFOLIO_DESC_KEY = 'malitrack-portfolio-description';
 const PORTFOLIO_LOCATION_KEY = 'malitrack-portfolio-location';
 const PORTFOLIO_VIDEO_URL_KEY = 'malitrack-portfolio-video-url';
-const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url'; // Will store Firebase URL
-const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';   // Will store Firebase URL
+const PORTFOLIO_BANNER_KEY = 'malitrack-portfolio-banner-url';
+const PORTFOLIO_LOGO_KEY = 'malitrack-portfolio-logo-url';
 const PORTFOLIO_FEATURED_ITEMS_KEY = 'malitrack-portfolio-featured-items';
 const PORTFOLIO_BEST_SELLING_ITEMS_KEY = 'malitrack-portfolio-best-selling-items';
 const PORTFOLIO_SALE_ITEMS_KEY = 'malitrack-portfolio-sale-items';
@@ -69,10 +69,14 @@ export default function PortfolioPage() {
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [bannerUploadProgress, setBannerUploadProgress] = useState<number | null>(null);
+  const [showBannerProgress, setShowBannerProgress] = useState(false);
 
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoUploadProgress, setLogoUploadProgress] = useState<number | null>(null);
+  const [showLogoProgress, setShowLogoProgress] = useState(false);
 
   const [activeMessageCategory, setActiveMessageCategory] = useState<MessageCategory | null>(null);
   const [unreadCounts, setUnreadCounts] = useState({
@@ -115,11 +119,21 @@ export default function PortfolioPage() {
     const storedVideoUrl = localStorage.getItem(PORTFOLIO_VIDEO_URL_KEY);
     if (storedVideoUrl) form.setValue("videoUrl", storedVideoUrl);
 
-    const storedBannerUrl = localStorage.getItem(PORTFOLIO_BANNER_KEY);
-    if (storedBannerUrl) setBannerPreview(storedBannerUrl);
+    try {
+      const storedBannerUrl = localStorage.getItem(PORTFOLIO_BANNER_KEY);
+      if (storedBannerUrl) setBannerPreview(storedBannerUrl);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') console.error("Error loading banner URL from localStorage:", error);
+      localStorage.removeItem(PORTFOLIO_BANNER_KEY);
+    }
 
-    const storedLogoUrl = localStorage.getItem(PORTFOLIO_LOGO_KEY);
-    if (storedLogoUrl) setProfilePreview(storedLogoUrl);
+    try {
+      const storedLogoUrl = localStorage.getItem(PORTFOLIO_LOGO_KEY);
+      if (storedLogoUrl) setProfilePreview(storedLogoUrl);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') console.error("Error loading logo URL from localStorage:", error);
+      localStorage.removeItem(PORTFOLIO_LOGO_KEY);
+    }
     
     const storedFeatured = localStorage.getItem(PORTFOLIO_FEATURED_ITEMS_KEY);
     if (storedFeatured) form.setValue("featuredItems", JSON.parse(storedFeatured));
@@ -132,6 +146,22 @@ export default function PortfolioPage() {
 
   }, [contextBusinessName, form]);
 
+  // Auto-hide progress bars after completion
+  useEffect(() => {
+    if (bannerUploadProgress === 100) {
+      const timer = setTimeout(() => setShowBannerProgress(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [bannerUploadProgress]);
+
+  useEffect(() => {
+    if (logoUploadProgress === 100) {
+      const timer = setTimeout(() => setShowLogoProgress(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [logoUploadProgress]);
+
+
   const handleImageChange = (
     e: ChangeEvent<HTMLInputElement>,
     setImagePreviewFn: React.Dispatch<React.SetStateAction<string | null>>,
@@ -143,13 +173,12 @@ export default function PortfolioPage() {
       setImageFileFn(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreviewFn(reader.result as string); // Show local preview immediately
+        setImagePreviewFn(reader.result as string);
       };
       reader.readAsDataURL(file);
-      form.setValue(formFieldName, file); // Store file object for upload
+      form.setValue(formFieldName, file);
     } else {
       setImageFileFn(null);
-      // Revert to stored cloud URL if exists, or null
       const storedKey = formFieldName === "bannerImageFile" ? PORTFOLIO_BANNER_KEY : PORTFOLIO_LOGO_KEY;
       setImagePreviewFn(localStorage.getItem(storedKey));
       form.setValue(formFieldName, null);
@@ -162,58 +191,89 @@ export default function PortfolioPage() {
       return;
     }
 
-    let bannerUrlToSave = bannerPreview; // Keep current URL if no new file
-    let logoUrlToSave = profilePreview;   // Keep current URL if no new file
+    let bannerUrlToSave = bannerPreview;
+    let logoUrlToSave = profilePreview;
 
     if (bannerFile) {
       setIsUploadingBanner(true);
+      setBannerUploadProgress(0);
+      setShowBannerProgress(true);
       try {
-        bannerUrlToSave = await uploadBusinessImage(currentUser.uid, 'banner', bannerFile);
-        setBannerPreview(bannerUrlToSave); // Update preview with cloud URL
+        bannerUrlToSave = await uploadBusinessImage(
+          currentUser.uid, 
+          'banner', 
+          bannerFile,
+          (progress) => setBannerUploadProgress(progress)
+        );
+        setBannerPreview(bannerUrlToSave);
         localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerUrlToSave);
-        setBannerFile(null); // Clear file after upload
+        setBannerFile(null);
         form.setValue("bannerImageFile", null);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') console.error("Banner upload error:", error);
         toast({ variant: "destructive", title: "Banner Upload Failed", description: "Could not upload banner image." });
-        setIsUploadingBanner(false);
-        return; // Stop submission if upload fails
+        setShowBannerProgress(false); 
       } finally {
         setIsUploadingBanner(false);
+        // Progress bar will auto-hide via useEffect
       }
     }
 
     if (profileFile) {
       setIsUploadingLogo(true);
+      setLogoUploadProgress(0);
+      setShowLogoProgress(true);
       try {
-        logoUrlToSave = await uploadBusinessImage(currentUser.uid, 'logo', profileFile);
-        setProfilePreview(logoUrlToSave); // Update preview with cloud URL
+        logoUrlToSave = await uploadBusinessImage(
+          currentUser.uid, 
+          'logo', 
+          profileFile,
+          (progress) => setLogoUploadProgress(progress)
+        );
+        setProfilePreview(logoUrlToSave);
         localStorage.setItem(PORTFOLIO_LOGO_KEY, logoUrlToSave);
-        setProfileFile(null); // Clear file after upload
+        setProfileFile(null);
         form.setValue("profileImageFile", null);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') console.error("Logo upload error:", error);
         toast({ variant: "destructive", title: "Logo Upload Failed", description: "Could not upload logo image." });
-        setIsUploadingLogo(false);
-        return; // Stop submission if upload fails
+        setShowLogoProgress(false);
       } finally {
         setIsUploadingLogo(false);
+        // Progress bar will auto-hide via useEffect
       }
     }
 
-    // Save other textual data to localStorage
     if (data.businessName) {
       setContextBusinessName(data.businessName);
     }
     localStorage.setItem(PORTFOLIO_DESC_KEY, data.businessDescription);
     if(data.businessLocation) localStorage.setItem(PORTFOLIO_LOCATION_KEY, data.businessLocation);
     if(data.videoUrl) localStorage.setItem(PORTFOLIO_VIDEO_URL_KEY, data.videoUrl);
+    
+    try {
+        if (bannerUrlToSave) localStorage.setItem(PORTFOLIO_BANNER_KEY, bannerUrlToSave); else localStorage.removeItem(PORTFOLIO_BANNER_KEY);
+    } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+            toast({ variant: "destructive", title: "Banner Image Too Large", description: "Could not save banner preview locally (too large), but it's in the cloud if uploaded."});
+        } else {
+            if (process.env.NODE_ENV === 'development') console.error("Error saving banner URL to localStorage:", error);
+        }
+    }
+    try {
+        if (logoUrlToSave) localStorage.setItem(PORTFOLIO_LOGO_KEY, logoUrlToSave); else localStorage.removeItem(PORTFOLIO_LOGO_KEY);
+    } catch (error) {
+         if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+            toast({ variant: "destructive", title: "Logo Image Too Large", description: "Could not save logo preview locally (too large), but it's in the cloud if uploaded."});
+        } else {
+          if (process.env.NODE_ENV === 'development') console.error("Error saving logo URL to localStorage:", error);
+        }
+    }
+    
     if(data.featuredItems) localStorage.setItem(PORTFOLIO_FEATURED_ITEMS_KEY, JSON.stringify(data.featuredItems));
     if(data.bestSellingItems) localStorage.setItem(PORTFOLIO_BEST_SELLING_ITEMS_KEY, JSON.stringify(data.bestSellingItems));
     if(data.saleItems) localStorage.setItem(PORTFOLIO_SALE_ITEMS_KEY, JSON.stringify(data.saleItems));
     
-    // Simulate saving payment settings if needed
-
     toast({
       title: "Portfolio Updated",
       description: "Your business portfolio has been saved. Images uploaded to cloud storage.",
@@ -231,6 +291,28 @@ export default function PortfolioPage() {
   const handleCategoryClick = (category: MessageCategory) => {
     setActiveMessageCategory(category);
   };
+
+  const renderProgressIndicator = (
+    progress: number | null, 
+    show: boolean, 
+    onDismiss: () => void,
+    label: string
+  ) => {
+    if (!show || progress === null) return null;
+    return (
+      <div className="mt-2 p-3 border rounded-md bg-muted/50">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-medium">Uploading {label}...</p>
+          <Button variant="ghost" size="icon" onClick={onDismiss} className="h-6 w-6">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <Progress value={progress} className="w-full h-2" />
+        <p className="text-xs text-muted-foreground mt-1 text-right">{Math.round(progress)}%</p>
+      </div>
+    );
+  };
+
 
   return (
     <div className="space-y-8">
@@ -301,12 +383,13 @@ export default function PortfolioPage() {
                             disabled={isUploadingBanner}
                           />
                           <Button type="button" variant="outline" onClick={() => document.getElementById('bannerImageFile')?.click()} disabled={isUploadingBanner}>
-                            {isUploadingBanner ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ImagePlus className="mr-2 h-4 w-4"/>}
-                            {isUploadingBanner ? "Uploading..." : "Choose Banner"}
+                            {isUploadingBanner && bannerUploadProgress !== null && bannerUploadProgress < 100 ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ImagePlus className="mr-2 h-4 w-4"/>}
+                            {isUploadingBanner && bannerUploadProgress !== null && bannerUploadProgress < 100 ? `Uploading ${Math.round(bannerUploadProgress)}%` : "Choose Banner"}
                           </Button>
                         </div>
                       </FormControl>
-                      {bannerPreview && <Image src={bannerPreview} alt="Banner preview" width={300} height={150} className="mt-2 rounded-md object-cover aspect-[2/1]" data-ai-hint="store banner" />}
+                      {renderProgressIndicator(bannerUploadProgress, showBannerProgress, () => setShowBannerProgress(false), "banner")}
+                      {bannerPreview && !showBannerProgress && <Image src={bannerPreview} alt="Banner preview" width={300} height={150} className="mt-2 rounded-md object-cover aspect-[2/1]" data-ai-hint="store banner" />}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -328,12 +411,13 @@ export default function PortfolioPage() {
                             disabled={isUploadingLogo}
                           />
                            <Button type="button" variant="outline" onClick={() => document.getElementById('profileImageFile')?.click()} disabled={isUploadingLogo}>
-                            {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ImagePlus className="mr-2 h-4 w-4"/>}
-                            {isUploadingLogo ? "Uploading..." : "Choose Logo"}
+                            {isUploadingLogo && logoUploadProgress !== null && logoUploadProgress < 100 ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ImagePlus className="mr-2 h-4 w-4"/>}
+                            {isUploadingLogo && logoUploadProgress !== null && logoUploadProgress < 100 ? `Uploading ${Math.round(logoUploadProgress)}%` : "Choose Logo"}
                           </Button>
                         </div>
                       </FormControl>
-                      {profilePreview && <Image src={profilePreview} alt="Profile preview" width={100} height={100} className="mt-2 rounded-full object-cover aspect-square" data-ai-hint="business logo" />}
+                      {renderProgressIndicator(logoUploadProgress, showLogoProgress, () => setShowLogoProgress(false), "logo")}
+                      {profilePreview && !showLogoProgress && <Image src={profilePreview} alt="Profile preview" width={100} height={100} className="mt-2 rounded-full object-cover aspect-square" data-ai-hint="business logo" />}
                       <FormMessage />
                     </FormItem>
                   )}

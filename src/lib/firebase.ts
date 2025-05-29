@@ -15,7 +15,7 @@ import {
   updateProfile
 } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, type FirebaseStorage } from "firebase/storage";
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, type FirebaseStorage, type UploadTaskSnapshot } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -29,11 +29,10 @@ const firebaseConfig = {
 };
 
 // --- DEBUGGING LOG ---
-// Check your browser console to see if these values are being loaded correctly.
 if (process.env.NODE_ENV === 'development') {
   console.log('Firebase Config Loaded by App:', firebaseConfig);
 }
-if (!firebaseConfig.apiKey) {
+if (!firebaseConfig.apiKey && process.env.NODE_ENV === 'development') {
   console.error("CRITICAL: Firebase API Key is missing. Check your .env.local file and ensure the Next.js server was restarted.");
 }
 // --- END DEBUGGING LOG ---
@@ -84,45 +83,104 @@ const onAuthStateChanged = (callback: (user: User | null) => void): (() => void)
 };
 
 // Storage functions
-const uploadProfileImage = async (userId: string, file: File): Promise<string> => {
+const uploadProfileImage = async (
+  userId: string, 
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<string> => {
   const fileRef = storageRef(storage, `users/${userId}/profile-${Date.now()}-${file.name}`);
-  await uploadBytes(fileRef, file, {
-    customMetadata: {
-      uploadedBy: userId,
-      entityType: "profile",
-      timestamp: new Date().toISOString(),
-    }
-  });
-  const downloadURL = await getDownloadURL(fileRef);
   
-  if (auth.currentUser) {
-    try {
-      await updateProfile(auth.currentUser, { photoURL: downloadURL });
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error("Error updating Firebase Auth user profile photoURL:", error);
+  return new Promise((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(fileRef, file, {
+      customMetadata: {
+        uploadedBy: userId,
+        entityType: "profile",
+        timestamp: new Date().toISOString(),
       }
-    }
-  }
-  return downloadURL;
+    });
+
+    uploadTask.on('state_changed',
+      (snapshot: UploadTaskSnapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Upload is ' + progress + '% done');
+        }
+        if (onProgress) {
+          onProgress(progress);
+        }
+      },
+      (error) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Upload failed:", error);
+        }
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          if (auth.currentUser) {
+            await updateProfile(auth.currentUser, { photoURL: downloadURL });
+          }
+          resolve(downloadURL);
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error("Error getting download URL or updating profile:", error);
+          }
+          reject(error);
+        }
+      }
+    );
+  });
 };
 
-const uploadBusinessImage = async (userId: string, imageType: 'banner' | 'logo', file: File): Promise<string> => {
+const uploadBusinessImage = async (
+  userId: string, 
+  imageType: 'banner' | 'logo', 
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<string> => {
   const fileName = `${imageType}-${Date.now()}-${file.name}`;
-  // Using userId in path as a stand-in for businessId for this prototype
   const fileRef = storageRef(storage, `businesses/${userId}/${imageType}/${fileName}`);
   
-  await uploadBytes(fileRef, file, {
-    customMetadata: {
-      uploadedBy: userId,
-      entityType: "businessPortfolio",
-      imageType: imageType,
-      timestamp: new Date().toISOString(),
-    }
+  return new Promise((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(fileRef, file, {
+      customMetadata: {
+        uploadedBy: userId,
+        entityType: "businessPortfolio",
+        imageType: imageType,
+        timestamp: new Date().toISOString(),
+      }
+    });
+
+    uploadTask.on('state_changed',
+      (snapshot: UploadTaskSnapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+         if (process.env.NODE_ENV === 'development') {
+          console.log(`Business ${imageType} upload is ` + progress + '% done');
+        }
+        if (onProgress) {
+          onProgress(progress);
+        }
+      },
+      (error) => {
+         if (process.env.NODE_ENV === 'development') {
+          console.error(`Business ${imageType} upload failed:`, error);
+        }
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error(`Error getting business ${imageType} download URL:`, error);
+          }
+          reject(error);
+        }
+      }
+    );
   });
-  const downloadURL = await getDownloadURL(fileRef);
-  // In a real app, you'd save this downloadURL to a Firestore document for the business.
-  return downloadURL;
 };
 
 
@@ -137,6 +195,6 @@ export {
   doSignOut,
   onAuthStateChanged,
   uploadProfileImage,
-  uploadBusinessImage, // Export new function
+  uploadBusinessImage,
   updateProfile
 };
