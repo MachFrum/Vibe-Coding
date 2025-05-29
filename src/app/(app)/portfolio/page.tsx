@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, Video, DollarSign, CreditCard, Palette, Tag, Sparkles, Save, MapPin, Phone, MessageSquare, Users, Truck, Bell } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { useBusiness } from "@/contexts/BusinessContext"; // Import useBusiness
 
 // Mock inventory data for selection
 const mockInventoryForPortfolio: InventoryItem[] = [
@@ -51,6 +52,7 @@ type MessageCategory = "buyers" | "suppliers" | "malitrack" | "finance";
 
 export default function PortfolioPage() {
   const { toast } = useToast();
+  const { businessName: contextBusinessName, setBusinessName } = useBusiness(); // Get from context
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
   const [activeMessageCategory, setActiveMessageCategory] = useState<MessageCategory | null>(null);
@@ -66,7 +68,7 @@ export default function PortfolioPage() {
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioSchema),
     defaultValues: {
-      businessName: "My Awesome Business",
+      businessName: "", // Will be set by useEffect
       businessDescription: "Selling the best widgets in town since 2023. High quality and great service guaranteed!",
       businessLocation: "123 Market St, BizTown, BT 54321",
       videoUrl: "",
@@ -83,23 +85,34 @@ export default function PortfolioPage() {
     },
   });
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>, setImagePreview: React.Dispatch<React.SetStateAction<string | null>>, fieldName: "bannerImage" | "profileImage") => {
+  // Effect to initialize form's businessName with value from context (localStorage)
+  useEffect(() => {
+    if (contextBusinessName) {
+      form.setValue("businessName", contextBusinessName);
+    }
+  }, [contextBusinessName, form]);
+
+
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>, setImagePreviewFn: React.Dispatch<React.SetStateAction<string | null>>, fieldName: "bannerImage" | "profileImage") => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        setImagePreviewFn(reader.result as string);
         form.setValue(fieldName, file);
       };
       reader.readAsDataURL(file);
     } else {
-      setImagePreview(null);
+      setImagePreviewFn(null);
       form.setValue(fieldName, null);
     }
   };
 
   function onSubmit(data: PortfolioFormValues) {
     console.log("Portfolio data submitted:", data);
+    if (data.businessName) {
+      setBusinessName(data.businessName); // Update context and localStorage
+    }
     toast({
       title: "Portfolio Updated",
       description: "Your business portfolio has been saved successfully.",
@@ -108,7 +121,6 @@ export default function PortfolioPage() {
 
   const handleWhatsAppClick = () => {
     toast({ title: "WhatsApp Clicked", description: "Redirecting to WhatsApp (simulated)." });
-    // In a real app: window.open('whatsapp://send?phone=YOUR_PHONE_NUMBER', '_blank');
   };
 
   const handleChatCenterClick = () => {
@@ -117,7 +129,6 @@ export default function PortfolioPage() {
 
   const handleCategoryClick = (category: MessageCategory) => {
     setActiveMessageCategory(category);
-    // Potentially mark messages as read or fetch messages for this category
   };
 
   return (
@@ -222,10 +233,10 @@ export default function PortfolioPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button onClick={handleWhatsAppClick} variant="outline" className="w-full sm:w-auto">
+                <Button type="button" onClick={handleWhatsAppClick} variant="outline" className="w-full sm:w-auto">
                   <Phone className="mr-2 h-5 w-5" /> Connect WhatsApp
                 </Button>
-                <Button onClick={handleChatCenterClick} className="w-full sm:w-auto">
+                <Button type="button" onClick={handleChatCenterClick} className="w-full sm:w-auto">
                   <MessageSquare className="mr-2 h-5 w-5" /> Open Chat Center
                 </Button>
               </div>
@@ -244,6 +255,7 @@ export default function PortfolioPage() {
                     return (
                       <Button
                         key={category}
+                        type="button"
                         variant={activeMessageCategory === category ? "default" : "outline"}
                         onClick={() => handleCategoryClick(category)}
                         className="relative capitalize"
@@ -267,7 +279,6 @@ export default function PortfolioPage() {
                   ) : (
                     <p className="text-muted-foreground">Select a category to view messages.</p>
                   )}
-                  {/* Future: Map through actual messages for the active category here */}
                 </div>
               </div>
             </CardContent>
@@ -552,5 +563,3 @@ export default function PortfolioPage() {
     </div>
   );
 }
-
-    

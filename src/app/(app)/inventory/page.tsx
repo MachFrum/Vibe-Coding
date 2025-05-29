@@ -18,6 +18,7 @@ import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useBusiness } from "@/contexts/BusinessContext"; // Import useBusiness
 
 // Mock data for inventory items
 const mockInventory: InventoryItem[] = [
@@ -37,14 +38,12 @@ const inventoryItemSchema = z.object({
   image: z.any().optional(),
 });
 
-// Placeholder for business name - in a real app, this would come from context or data store
-const businessName = "Your Business Name";
-
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
+  const { businessName } = useBusiness(); // Get business name from context
 
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -106,7 +105,7 @@ export default function InventoryPage() {
     form.reset();
     setImagePreview(null);
     if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // Reset file input
+        fileInputRef.current.value = ""; 
     }
     setIsAddItemDialogOpen(false);
     toast({
@@ -140,14 +139,13 @@ export default function InventoryPage() {
         context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/png');
         setImagePreview(dataUrl);
-        // Convert data URL to File object and set in form
         fetch(dataUrl)
           .then(res => res.blob())
           .then(blob => {
             const file = new File([blob], "camera-capture.png", { type: "image/png" });
             form.setValue("image", file);
             if (fileInputRef.current) {
-                fileInputRef.current.value = ""; // Clear file input if camera used
+                fileInputRef.current.value = ""; 
             }
           });
         toast({ title: "Image Captured", description: "Image from camera has been set."});
@@ -163,7 +161,7 @@ export default function InventoryPage() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">{businessName}'s Inventory Log</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{(businessName || "Your Business")}'s Inventory Log</h1>
           <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -246,7 +244,7 @@ export default function InventoryPage() {
                   <FormField
                     control={form.control}
                     name="image"
-                    render={({ field }) => ( // field is not directly used for input value if handleImageChange manages it.
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>Item Image (Optional)</FormLabel>
                         <div className="flex items-center gap-4">
@@ -302,7 +300,6 @@ export default function InventoryPage() {
         </Card>
       </div>
 
-      {/* Camera Dialog for Inventory */}
       <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
