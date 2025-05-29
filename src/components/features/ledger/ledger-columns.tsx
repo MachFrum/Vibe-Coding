@@ -120,3 +120,5 @@ export const ledgerColumns: ColumnDef<LedgerEntry>[] = [
         </DropdownMenu>
       );
     },
+  },
+];
